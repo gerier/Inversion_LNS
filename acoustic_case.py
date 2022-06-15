@@ -121,7 +121,7 @@ def get_acoustic_RHS(U_t, t, l, gamma, dz, dt, source, BC, order_DF=4):
     U_t1[0,:] = 0
     U_t1[1,:-1] = -DF_C(U_t.p, dz, BC_p, False)
     U_t1[1,:-1] += source.v 
-    U_t1[2,:] = - l * DF_C(U_t.v,dz,BC_v)
+    U_t1[2,:] = - gamma * U_t.p * DF_C(U_t.v,dz,BC_v)
     U_t1[2,:] += source.p
     
     return LNS_Variable(U_t1[0,:], demi_rho * U_t1[1,:-1] , U_t1[2,:])
@@ -135,7 +135,7 @@ z0 = 0
 zmax = 20e3
 # time 
 T_init = 0
-Tmax = 20
+Tmax = 15
 
 # user paramter
 display_anim = False

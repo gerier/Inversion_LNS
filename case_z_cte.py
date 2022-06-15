@@ -17,6 +17,7 @@ import pandas as pd
 from scipy.interpolate import CubicSpline
 from copy import deepcopy
 
+import sys
 
 
 # definition of parameters
@@ -28,24 +29,25 @@ z0 = 0
 zmax = 20e3
 # time 
 T_init = 0
-Tmax = 20
+Tmax = 15
 
 # user paramter
 display_anim = False
 case2 = False
+time_scheme = EE
 
 #%% MODEL PARAMETERS
 
 rho0 = 1.04898036 
-v0 = -4.33914709 #0.00745178154
+v0 = 0*100 #-4.33914709 #0.00745178154
 p0 =88714.4844 
 T0 = 294.375305 
 c = 344.108887 
 g = 0*9.81084824 
-mu = 1.27685234e-05
+mu = 0*1.27685234e-05
 kappa = 0.0258137602 
 gamma = 1.40011787 
-eta = 2.72986326e-05 
+eta = 0*2.72986326e-05 
 cv = 20.7801247 
 M = 28.965 # masse molaire de l'air https://fr.wikipedia.org/wiki/Air
 
@@ -102,6 +104,10 @@ source = get_source(t_ax, f0) #scipy.stats.norm.pdf(t_ax,10,1.5)
 dist_z = abs(z - z[iz_source])
 factor_source = np.exp(-dist_z/1000)
 
+source = np.ones(len(source))
+source[500:] = 1
+
+
 plt.plot(t_ax, source)
 plt.title("Form of the source applied on density on point z = "+str(z[iz_source]/1000)+"km")
 plt.xlabel('Time')
@@ -115,6 +121,7 @@ for t in t_ax :
         total_source[i,int(t/dt)] = source[int(t/dt)] * factor_source[i]
 
 
+
 fig, ax = plt.subplots()
 plt.imshow(total_source, aspect='auto')
 plt.colorbar(label="Intensity")
@@ -124,8 +131,10 @@ plt.yticks(range(0,len(z),20), z[0:len(z):20]/1000)
 plt.xlabel("Time")
 plt.ylabel("Distance (km)")
 
+
 source = [source, factor_source]
-reversed_source = [np.flip(source[0])[1:], source[1]]
+
+reversed_source = [np.flip(source[0]), source[1]]
 #%% INTIALISATION
 
 # define vectors of the system
@@ -156,7 +165,7 @@ fig.suptitle("The background")
 
 is_reverse = False
 # Resolution in a 1d case
-t_end, U_end, history_obs = EE(get_RHS, U1, T_init, Tmax, z, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
+t_end, U_end, history_obs = time_scheme(get_RHS, U1, T_init, Tmax, z, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
 
 
 #%% RESULTS
@@ -218,17 +227,19 @@ def get_anim(parameter_toplot, history, limits, z, propagation) :
     anim.save('./animation_'+parameter_toplot+'_'+propagation+".mp4")#, writer=writervideo)
     plt.close()
 
-disp_anim = True
-if disp_anim : 
+
+if display_anim : 
     get_anim("Density", history_obs[::10], (-0.02,0.02), z, 'forward')
     get_anim("Velocity", history_obs[::10], (-4,4), z, 'forward')
     get_anim("Pressure", history_obs[::10], (-2000,2000), z, 'forward')
+
 
 #%% BACKWARD RESOLUTION
     
 # Resolution in a 1d case
 U_tmax = deepcopy(U_end)
-t_start, U_start, history_reverse = EE(get_minus_RHS, U_end, T_init, Tmax, z, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, reversed_source, is_reverse)
+is_reverse = True
+t_start, U_start, history_reverse = time_scheme(get_minus_RHS, U_end, T_init, Tmax, z, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, reversed_source, is_reverse)
 
 
 #%% RESULTS BACKWARD
@@ -249,10 +260,10 @@ ax[1].grid()
 ax[2].grid()
 fig.suptitle("After Tmax = 0")
 
-
-get_anim("Density", history_reverse[::10], (-0.02,0.02), z, 'backward')
-get_anim("Velocity", history_reverse[::10], (-4,4), z, 'backward')
-get_anim("Pressure", history_reverse[::10], (-2000,2000), z, 'backward')
+if display_anim : 
+    get_anim("Density", history_reverse[::10], (-0.02,0.02), z, 'backward')
+    get_anim("Velocity", history_reverse[::10], (-4,4), z, 'backward')
+    get_anim("Pressure", history_reverse[::10], (-2000,2000), z, 'backward')
 
 #%% SUPERIMPOSITION OF BACKWARD AND FORWARD SOLUTION
 
@@ -281,4 +292,31 @@ for i in range(0,n,int(n/5)):
     fig.suptitle("Comparison of forward and backward solution at time (forward) t = "+str(t_ax[i]))
     plt.show()
     
+ 
+#%% RESOLUTION ADJOINT EQUATIONS
+
+if False:                                    
+    max_obs_rho = max( [max(history_obs[t].rho) for t in range(len(history_obs))])
+    max_obs_v = max( [max(history_obs[t].v) for t in range(len(history_obs))])
+    max_obs_p = max( [max(history_obs[t].p) for t in range(len(history_obs))])
     
+    max_obs = [max_obs_rho, max_obs_v, max_obs_v]
+    
+    U_end = deepcopy(U_tmax)
+    t_start, U_start, history_adjoint = time_scheme(get_adjoint_RHS, U_end, Tmax, T_init, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, history_reverse, history_obs, d_receivers, max_obs)
+    
+    # Plot the model
+    fig,ax = plt.subplots(3,1, figsize=(10,7))
+    ax[0].plot(z,U_start.rho)
+    ax[1].plot(z,U_start.p)
+    ax[2].plot( (z[1:] + z[:-1])/2,U_start.v)
+    ax[0].set_xlabel("Altitude")
+    ax[1].set_xlabel("Altitude")
+    ax[2].set_xlabel("Altitude")
+    ax[0].set_ylabel("Density")
+    ax[1].set_ylabel("Pressure")
+    ax[2].set_ylabel("Velocity")
+    ax[0].grid()
+    ax[1].grid()
+    ax[2].grid()
+    fig.suptitle("A T = 0, the background")

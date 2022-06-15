@@ -277,3 +277,31 @@ for i in range(0,n,int(n/5)):
     fig.suptitle("Comparison of forward and backward solution at time (forward) t = "+str(t_ax[i]))
     plt.show()
     
+    
+#%% RESOLUTION ADJOINT EQUATIONS
+
+                                      
+max_obs_rho = max( [max(history_obs[t].rho) for t in range(len(history_obs))])
+max_obs_v = max( [max(history_obs[t].v) for t in range(len(history_obs))])
+max_obs_p = max( [max(history_obs[t].p) for t in range(len(history_obs))])
+
+max_obs = [max_obs_rho, max_obs_v, max_obs_v]
+
+U_end = deepcopy(U_tmax)
+t_start, U_start, history_adjoint = RK4(get_adjoint_RHS, U_end, Tmax, T_init, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, history_reverse, history_obs, d_receivers, max_obs)
+
+# Plot the model
+fig,ax = plt.subplots(3,1, figsize=(10,7))
+ax[0].plot(z,U_start.rho)
+ax[1].plot(z,U_start.p)
+ax[2].plot( (z[1:] + z[:-1])/2,U_start.v)
+ax[0].set_xlabel("Altitude")
+ax[1].set_xlabel("Altitude")
+ax[2].set_xlabel("Altitude")
+ax[0].set_ylabel("Density")
+ax[1].set_ylabel("Pressure")
+ax[2].set_ylabel("Velocity")
+ax[0].grid()
+ax[1].grid()
+ax[2].grid()
+fig.suptitle("A T = 0, the background")
