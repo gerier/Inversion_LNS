@@ -51,12 +51,12 @@ def DF_DC_2(U, dz, BC, wind, is_reverse=False):
 
     
 def DF_DC_2_backward(U0, dz, BC):
-    U = np.append([BC[0]], U0)
+    U = np.append([BC[1]], U0)
     U = U[1:] - U[:-1]
     return U / dz
 
 def DF_DC_2_forward(U0, dz, BC):
-    U = np.append(U0, [BC[-1]])
+    U = np.append(U0, [BC[-2]])
     U = U[1:] - U[:-1]
     return U / dz
 
@@ -110,7 +110,7 @@ def DF_DC_4_backward(U0, dz, BC):
     return U / dz
 
 def DF_DC_4_forward(U0, dz, BC):
-    U = np.append(np.append([BC[2]], U0), BC[-2:])
+    U = np.append(np.append([BC[1]], U0), BC[-2:])
     Upp = U[3:]
     Up = U[2:-1]
     Um = U[:-3]
@@ -240,7 +240,7 @@ def RK4(f, U_t, T_init, Tmax, z, *args):
 # Definition of temporal scheme - Euler explicit
 def EE(f, U_t, T_init, Tmax, z, *args):
     fig,ax = plt.subplots(3,1)
-    ax[0].plot(z,U_t.rho, label=str(T_init))
+    ax[0].plot(z,U_t.rho, label="t = "+str(T_init))
     ax[1].plot(z,U_t.p)
     ax[2].plot( (z[1:] + z[:-1])/2,U_t.v)
     
@@ -252,6 +252,58 @@ def EE(f, U_t, T_init, Tmax, z, *args):
     for t in np.arange(T_init,Tmax,dt):
         U_t = U_t +  f(U_t, t, *args) * dt
         U_t = apply_sponge(U_t)
+        if (t+dt) % 5 < 1e-4 : 
+            ax[0].plot(z,U_t.rho, label='t = '+str(t+dt))
+            ax[1].plot(z,U_t.p)
+            ax[2].plot( (z[1:] + z[:-1])/2,U_t.v)
+
+        history += [deepcopy(U_t)]
+        
+    # make a plot to vizualise the transformation of the threee quantities    
+    ax[0].set_xlabel("Altitude")
+    ax[1].set_xlabel("Altitude")
+    ax[2].set_xlabel("Altitude")
+    ax[0].set_ylabel("Density")
+    ax[1].set_ylabel("Pressure")
+    ax[2].set_ylabel("Velocity")
+    ax[0].grid()
+    ax[1].grid()
+    ax[2].grid()
+    fig.legend()
+    return t, U_t, np.array(history)
+
+
+# Definition of temporal scheme - Euler explicit with leap-frgo
+def EE(f, U_t, T_init, Tmax, z, *args):
+    # we suppose here at initialisation that v in given at time t=0, and 
+    # rho and p are given at time t=1/2
+    fig,ax = plt.subplots(3,1)
+    ax[0].plot(z,U_t.rho, label="t = "+str(T_init))
+    ax[1].plot(z,U_t.p)
+    ax[2].plot( (z[1:] + z[:-1])/2,U_t.v)
+    
+    # load the dt
+    dt = args[9]
+    
+    # create a vector to save state at each time
+    history = [deepcopy(U_t)]
+    for t in np.arange(T_init,Tmax,dt):
+        
+        if not args[11] :# need to change the order of treatment in the backward propagation 
+            tn = f(U_t, t, *args)
+            U_t.v = U_t.v + tn.v * dt
+            tndemi = f(U_t, t, *args)
+            U_t.rho = U_t.rho + tndemi.rho * dt
+            U_t.p = U_t.p + tndemi.p * dt
+        else : 
+            tn = f(U_t, t, *args)
+            U_t.rho = U_t.rho + tn.rho * dt
+            U_t.p = U_t.p + tn.p * dt
+            tndemi = f(U_t, t, *args)
+            U_t.v = U_t.v + tndemi.v * dt
+            
+        #U_t = apply_sponge(U_t)
+        
         if (t+dt) % 5 < 1e-4 : 
             ax[0].plot(z,U_t.rho, label='t = '+str(t+dt))
             ax[1].plot(z,U_t.p)

@@ -72,7 +72,7 @@ def DF_kappaDT(T, kappa, gamma, dz, BC, DF_C):
     BC_aux = BC * np.array([aux[0],aux[0],aux[-1],aux[-1]])
     return DF_C( (aux[1:]+ aux[:-1])/2  * dT, dz, BC_aux, False) 
 
-def DF_Sigma_C_C(U1, U0, dz, l, is_reverse, DF_C):
+def DF_Sigma_C_C(U1, U0, dz, l, gamma, is_reverse, DF_C):
     # initialise
     S  = np.zeros((3,len(U1.rho)))
     
@@ -85,7 +85,10 @@ def DF_Sigma_C_C(U1, U0, dz, l, is_reverse, DF_C):
     # compute the contribution on qunatity of mvt
     S[1,:-1] = DF_C(U1.p, dz, BC1, False)                                                   # grad p1
     # compute the contribution on pressure
-    S[2,:] = -l * DF_C(U1.v + U0.v, dz, BC_v0)
+    S[2,:] = gamma * U1.p * DF_C(U0.v, dz, BC_v0)                                  # gamma p1 div v0
+    #S[2,:] += interpolation(U1.v) * DF_DC(U0.p, dz, BC_p0, U0.v, is_reverse)       # v1 grad p0
+    S[2,:] +=  gamma * U0.p * DF_C(U1.v, dz, BC1)                                  # gamma p0 div v1
+    #S[2,:] += interpolation(U0.v) * DF_DC(U1.p, dz, BC1, U0.v, is_reverse)         # v0 grad p1
     return LNS_Variable(S[0,:], 2 * S[1,:-1] / (U0.rho[1:]+U0.rho[:-1]), S[2,:])
 
 
@@ -116,7 +119,7 @@ def get_RHS(U1, t, U0, T0, g, l, mu, kappa, gamma, R, dz, dt, source, is_reverse
         DF_DC_forward = DF_DC_2_forward
         DF_C = DF_C_2
         
-    RHS_c = F(U1, U0, int(abs(t/dt)), source, len(U1.rho), gamma)  - DF_Sigma_C_C(U1, U0, dz, l, is_reverse, DF_C)
+    RHS_c = F(U1, U0, int(abs(t/dt)), source, len(U1.rho), gamma)  - DF_Sigma_C_C(U1, U0, dz, l, gamma, is_reverse, DF_C)
     
     RHS_dbackward = RHS_c 
     
