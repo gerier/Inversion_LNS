@@ -216,13 +216,13 @@ else :
         BC_p1 = [U1.p[-2], U1.p[-1], U1.p[0], U1.p[1]]
         
         # compute the contribution on density
-        S[0,:] = interpolation(U1.v) * DF_DC(U0.rho, dz, BC_rho0)        # v1 grad rho0
-        S[0,:] += interpolation(U0.v) * DF_DC(U1.rho, dz, BC_v1)           # v0 grad rho1 
+        S[0,:] = interpolation(U1.v) * DF_DC(U0.rho, dz, BC_rho0, U0.v, is_reverse)        # v1 grad rho0
+        S[0,:] += interpolation(U0.v) * DF_DC(U1.rho, dz, BC_v1, U0.v, is_reverse)           # v0 grad rho1 
         # compute the contribution on qunatity of mvt
-        S[1,:-1] = (U0.rho[1:]+U0.rho[:-1])/2 * U0.v * DF_DC(U1.v, dz, BC_v1)    # roh0 v0 . div v1
+        S[1,:-1] = (U0.rho[1:]+U0.rho[:-1])/2 * U0.v * DF_DC(U1.v, dz, BC_v1, U0.v, is_reverse)    # roh0 v0 . div v1
         # compute the contribution on pressure
-        S[2,:] = interpolation(U1.v) * DF_DC(U0.p, dz, BC_p0)       # v1 grad p0
-        S[2,:] += interpolation(U0.v) * DF_DC(U1.p, dz, BC_p1)         # v0 grad p1
+        S[2,:] = interpolation(U1.v) * DF_DC(U0.p, dz, BC_p0, U0.v, is_reverse)       # v1 grad p0
+        S[2,:] += interpolation(U0.v) * DF_DC(U1.p, dz, BC_p1, U0.v, is_reverse)         # v0 grad p1
 
         return LNS_Variable(S[0,:], 2 * S[1,:-1] / (U0.rho[1:]+U0.rho[:-1]), S[2,:])
     
@@ -278,7 +278,7 @@ else :
         # compute the contribution on density
         GU[0,:] = 0
         # compute the contribution on quantity of mvt
-        GU[1,:-1] = - (rho0_demi * U1.v + rho1_demi * U0.v) * DF_DC(U0.v, dz, BC_v0)  # (rho0v1 + rho1v0) div v0
+        GU[1,:-1] = - (rho0_demi * U1.v + rho1_demi * U0.v) * DF_DC(U0.v, dz, BC_v0, U0.v, is_reverse)  # (rho0v1 + rho1v0) div v0
         # compute the contribution on pressure
         GU[2,:] = 0
         
@@ -316,10 +316,10 @@ else :
             - DF_Sigma_C_C(U1, U0, dz, gamma, is_reverse, DF_C)
 
         if not is_reverse : 
-            RHS_plusdt = RHS_c + (G_DC(U1, U0, dz, g, is_reverse, DF_DC_backward) - DF_Sigma_C_DC(U1, U0, dz, gamma, is_reverse, DF_DC_backward)) #*0.5
+            RHS_plusdt = RHS_c + (G_DC(U1, U0, dz, g, is_reverse, DF_DC_4) - DF_Sigma_C_DC(U1, U0, dz, gamma, is_reverse, DF_DC_4)) #*0.5
             #RHS_plusdt = RHS_plusdt2 + (G_DC(U1, U0, dz, g, is_reverse, DF_DC_forward) - DF_Sigma_C_DC(U1, U0, dz, gamma, is_reverse, DF_DC_forward))*0.5         
         else : 
-            RHS_plusdt = RHS_c + (G_DC(U1, U0, dz, g, is_reverse, DF_DC_forward) - DF_Sigma_C_DC(U1, U0, dz, gamma, is_reverse, DF_DC_forward)) #*0.5 
+            RHS_plusdt = RHS_c + (G_DC(U1, U0, dz, g, is_reverse, DF_DC_4) - DF_Sigma_C_DC(U1, U0, dz, gamma, is_reverse, DF_DC_4)) #*0.5 
             #RHS_plusdt = RHS_plusdt2 + (G_DC(U1, U0, dz, g, is_reverse, DF_DC_backward) - DF_Sigma_C_DC(U1, U0, dz, gamma, is_reverse, DF_DC_backward))*0.5
         return RHS_plusdt
 

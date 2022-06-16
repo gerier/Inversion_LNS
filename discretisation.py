@@ -75,6 +75,7 @@ def DF_C_4(U, dz, BC, need_BC= True):
 def DF_DC_4(U, dz, BC, wind, is_reverse=False):
     diff_U = np.zeros(len(U))
     interp_wind = interpolation(wind)
+    print(is_reverse)
     if is_reverse:
         interp_wind *= -1
     for i in range(len(U)):
@@ -120,7 +121,7 @@ def DF_DC_4_forward(U0, dz, BC):
 
 def interpolation(U):
     # compute the value at point i+1/2 for i in [0,N-1]
-    U = np.append(np.append([U[0]], U), [U[-1]])
+    U = np.append(np.append([U[-1]], U), [U[0]])
     U = U[1:] + U[:-1]
     return U / 2
 
@@ -284,7 +285,7 @@ def EE(f, U_t, T_init, Tmax, z, *args):
     
     # load the dt
     dt = args[9]
-    
+    test_f = []
     # create a vector to save state at each time
     history = [deepcopy(U_t)]
     for t in np.arange(T_init,Tmax,dt):
@@ -292,17 +293,44 @@ def EE(f, U_t, T_init, Tmax, z, *args):
         if not args[11] :# need to change the order of treatment in the backward propagation 
             tn = f(U_t, t, *args)
             U_t.v = U_t.v + tn.v * dt
-            tndemi = f(U_t, t, *args)
+            tndemi = f(U_t, t+dt/2, *args)
             U_t.rho = U_t.rho + tndemi.rho * dt
             U_t.p = U_t.p + tndemi.p * dt
-        else : 
+            test_f += [tn.v]
+        else :
             tn = f(U_t, t, *args)
             U_t.rho = U_t.rho + tn.rho * dt
             U_t.p = U_t.p + tn.p * dt
-            tndemi = f(U_t, t, *args)
+            tndemi = f(U_t, t+dt/2, *args)
             U_t.v = U_t.v + tndemi.v * dt
+            test_f += [tndemi.v]
+#        if True : #not args[11] : 
+#            U_t =  U_t + f(U_t, t, *args) * dt 
+#            test_f += [f(U_t, t, *args).rho] 
+#        else : 
+#            U_t =  U_t + f(args[12][len(args[12]) - 2 - int(round(t/dt))], t, *args) * dt   
+#            test_f += [f(args[12][len(args[12]) - 2 - int(round(t/dt))], t, *args).rho]  
+#        if not args[11] :# need to change the order of treatment in the backward propagation 
+#            tn = f(U_t, t, *args)
+#            U_t.v = U_t.v + tn.v * dt
+#            tndemi = f(U_t, t+dt/2, *args)
+#            U_t.rho = U_t.rho + tndemi.rho * dt
+#            U_t.p = U_t.p + tndemi.p * dt
+#            test_f += [tn.v]
+#        else : 
+#            aux = deepcopy(args[12][len(args[12]) - 2 - int(round(t/dt))])
+#            aux.v = args[12][len(args[12]) - 1 - int(round(t/dt))].v
+#            tn = f(aux, t, *args)
+#            U_t.rho = U_t.rho + tn.rho * dt
+#            U_t.p = U_t.p + tn.p * dt
+#            
+#            aux = deepcopy(U_t)
+#            aux.v = args[12][len(args[12]) - 2 - int(round(t/dt))].v
+#            tndemi = f(aux, t+dt/2, *args)
+#            U_t.v = U_t.v + tndemi.v * dt
+#            test_f += [tndemi.v]
             
-        #U_t = apply_sponge(U_t)
+#        #U_t = apply_sponge(U_t)
         
         if (t+dt) % 5 < 1e-4 : 
             ax[0].plot(z,U_t.rho, label='t = '+str(t+dt))
@@ -322,4 +350,4 @@ def EE(f, U_t, T_init, Tmax, z, *args):
     ax[1].grid()
     ax[2].grid()
     fig.legend()
-    return t, U_t, np.array(history)
+    return t, U_t, np.array(history), test_f
