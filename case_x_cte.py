@@ -38,6 +38,7 @@ case2 = False
 #%% define the model thanks to a MSISE file
 
 path_file = "/home/deos/s.gerier/PROJECTS/SIMULATIONS/ATMOSPHERIC_MODELS/MSISE/msisehwm_wrapper/OUTPUT/Flores_atmosphere_500km_86p2_4.dat"
+path_file = "./Flores_atmosphere_500km_86p2_4.dat"
 data = np.genfromtxt(path_file, skip_header=3)#,delimiter=[7,7,7,7,7,7,7,3,3,3,3,5,5,7,7,7])
 df = pd.DataFrame(data, columns =["z[m]", "rho[kg/(m^3)]", "T[K]", "c[m/s]", "p[Pa]", "H[m]", "g[m/(s^2)]", "N^2[rad^2/s^2]", "kappa[J/(s.m.K)]", "mu[kg(s.m)]", "mu_vol[kg/(s.m)]", "w_M[m/s]", "w_Z[m/s]", "w_P[m/s]", "c_p[J/(mol.K)]", "c_v[J/(mol.K)]", "gamma"])
 v0 = 0
@@ -55,7 +56,6 @@ max_dx = min_v / (10 * 2.5 * f0)
 max_dt = max_dx / max_v
 
 print("With this source, you must choose a dx < ", str(max_dx) )
-
 print("If taking the dx max, finaly, you will have to choose a dt < ", str(max_dt))
 
 
@@ -117,7 +117,7 @@ ax[1].grid()
 ax[2].grid()
 fig.suptitle("The background")
 plt.show()
-
+plt.close()
 #%% DEFINE SOURCE ON MESH
 
 # set the source
@@ -128,10 +128,14 @@ source = get_source(t_ax, f0) #scipy.stats.norm.pdf(t_ax,10,1.5)
 dist_z = abs(z - z[iz_source])
 factor_source = np.exp(-dist_z/1000)
 
+source = np.ones(len(source))
+source[500:] = 1
+
 plt.figure()
 plt.plot(t_ax, source)
 plt.title("Form of the source applied on density on point z=12km")
 plt.show()
+plt.close()
 
 # plot the source in time and space
 total_source = np.zeros((len(z), len(t_ax)))
@@ -148,6 +152,7 @@ plt.xticks(range(0,len(t_ax),1000), t_ax[0:len(t_ax):1000])
 plt.yticks(range(0,len(z),20), z[0:len(z):20]/1000)
 plt.xlabel("Time")
 plt.ylabel("Altitude")
+plt.close()
 
 source = [source, factor_source]
 reversed_source = [np.flip(source[0])[1:], source[1]]
@@ -173,6 +178,7 @@ ax[0].grid()
 ax[1].grid()
 ax[2].grid()
 fig.suptitle("Perturbation after Tmax = "+ str(Tmax))
+plt.close()
 
 #get_ipython().run_line_magic('matplotlib', 'inline')
 from IPython.display import HTML
@@ -242,7 +248,7 @@ ax[0].grid()
 ax[1].grid()
 ax[2].grid()
 fig.suptitle("A T = 0, the background")
-
+plt.close()
 
 if disp_anim:
     get_anim("Density", history_reverse[::10], (-0.02,0.02), z, 'backward')
@@ -253,7 +259,7 @@ if disp_anim:
 #%% SUPERIMPOSITION OF BACKWARD AND FORWARD SOLUTION
 
 n = len(history_reverse)
-for i in range(0,n,int(n/5)):
+for i in range(0,n,int(n/3)):
     fig,ax = plt.subplots(3,1, figsize=(10,7))
     # forward
     ax[0].plot(z,history_obs[i].rho, 'b', label='Forward')
@@ -280,28 +286,28 @@ for i in range(0,n,int(n/5)):
     
 #%% RESOLUTION ADJOINT EQUATIONS
 
-                                      
-max_obs_rho = max( [max(history_obs[t].rho) for t in range(len(history_obs))])
-max_obs_v = max( [max(history_obs[t].v) for t in range(len(history_obs))])
-max_obs_p = max( [max(history_obs[t].p) for t in range(len(history_obs))])
-
-max_obs = [max_obs_rho, max_obs_v, max_obs_v]
-
-U_end = deepcopy(U_tmax)
-t_start, U_start, history_adjoint = RK4(get_adjoint_RHS, U_end, Tmax, T_init, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, history_reverse, history_obs, d_receivers, max_obs)
-
-# Plot the model
-fig,ax = plt.subplots(3,1, figsize=(10,7))
-ax[0].plot(z,U_start.rho)
-ax[1].plot(z,U_start.p)
-ax[2].plot( (z[1:] + z[:-1])/2,U_start.v)
-ax[0].set_xlabel("Altitude")
-ax[1].set_xlabel("Altitude")
-ax[2].set_xlabel("Altitude")
-ax[0].set_ylabel("Density")
-ax[1].set_ylabel("Pressure")
-ax[2].set_ylabel("Velocity")
-ax[0].grid()
-ax[1].grid()
-ax[2].grid()
-fig.suptitle("A T = 0, the background")
+if False :                                       
+	max_obs_rho = max( [max(history_obs[t].rho) for t in range(len(history_obs))])
+	max_obs_v = max( [max(history_obs[t].v) for t in range(len(history_obs))])
+	max_obs_p = max( [max(history_obs[t].p) for t in range(len(history_obs))])
+	
+	max_obs = [max_obs_rho, max_obs_v, max_obs_v]
+	
+	U_end = deepcopy(U_tmax)
+	t_start, U_start, history_adjoint = RK4(get_adjoint_RHS, U_end, Tmax, T_init, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, history_reverse, history_obs, d_receivers, max_obs)
+	
+	# Plot the model
+	fig,ax = plt.subplots(3,1, figsize=(10,7))
+	ax[0].plot(z,U_start.rho)
+	ax[1].plot(z,U_start.p)
+	ax[2].plot( (z[1:] + z[:-1])/2,U_start.v)
+	ax[0].set_xlabel("Altitude")
+	ax[1].set_xlabel("Altitude")
+	ax[2].set_xlabel("Altitude")
+	ax[0].set_ylabel("Density")
+	ax[1].set_ylabel("Pressure")
+	ax[2].set_ylabel("Velocity")
+	ax[0].grid()
+	ax[1].grid()
+	ax[2].grid()
+	fig.suptitle("A T = 0, the background")

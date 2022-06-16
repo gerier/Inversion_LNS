@@ -6,8 +6,9 @@ Created on Mon Jun 13 09:02:52 2022
 @author: s.gerier
 """
 
-from linearised_navier_stokes import *
 from discretisation import *
+from linearised_navier_stokes_testdc import *
+
 
 import numpy as np
 import scipy.stats
@@ -29,7 +30,7 @@ z0 = 0
 zmax = 20e3
 # time 
 T_init = 0
-Tmax = 15
+Tmax = 20
 
 # user paramter
 display_anim = False
@@ -40,7 +41,7 @@ time_scheme = EE
 
 rho0 = 1.04898036 
 v0 = 0*100 #-4.33914709 #0.00745178154
-p0 =88714.4844 
+p0 = 88714.4844 
 T0 = 294.375305 
 c = 344.108887 
 g = 0*9.81084824 
@@ -98,28 +99,18 @@ for i,param in enumerate(param_toset_onmesh):
 
 # set the source
 iz_source = 100
-t_ax = np.arange(T_init,Tmax+dt+dt,dt)
+t_ax = np.arange(T_init,Tmax,dt/2)
 source = get_source(t_ax, f0) #scipy.stats.norm.pdf(t_ax,10,1.5)
 
 dist_z = abs(z - z[iz_source])
 factor_source = np.exp(-dist_z/1000)
 
-source = np.ones(len(source))
-source[500:] = 1
-
-
-plt.plot(t_ax, source)
-plt.title("Form of the source applied on density on point z = "+str(z[iz_source]/1000)+"km")
-plt.xlabel('Time')
-plt.ylabel("Intensity")
-plt.show()
 
 # plot the source in time and space
 total_source = np.zeros((len(z), len(t_ax)))
 for t in t_ax : 
     for i in range(len(z)):
-        total_source[i,int(t/dt)] = source[int(t/dt)] * factor_source[i]
-
+        total_source[i,int(round(2*t/dt))] = source[int(round(2*t/dt))] * factor_source[i]
 
 
 fig, ax = plt.subplots()
@@ -130,11 +121,20 @@ plt.xticks(range(0,len(t_ax),1000), t_ax[0:len(t_ax):1000])
 plt.yticks(range(0,len(z),20), z[0:len(z):20]/1000)
 plt.xlabel("Time")
 plt.ylabel("Distance (km)")
-
+plt.close()
 
 source = [source, factor_source]
+reversed_source = [np.flip(source[0]), source[1]] 
 
-reversed_source = [np.flip(source[0]), source[1]]
+plt.figure()
+plt.plot(t_ax, source[0], label="source")
+plt.plot(np.flip(t_ax), reversed_source[0], label="reverse source")
+plt.title("Form of the source applied on density on point z = "+str(z[iz_source]/1000)+"km")
+plt.xlabel('Time')
+plt.ylabel("Intensity")
+plt.show()
+plt.close()
+
 #%% INTIALISATION
 
 # define vectors of the system
@@ -159,13 +159,24 @@ ax[0].grid()
 ax[1].grid()
 ax[2].grid()
 fig.suptitle("The background")
-
+plt.close()
 
 #%% RESOLUTION
 
 is_reverse = False
 # Resolution in a 1d case
-t_end, U_end, history_obs = time_scheme(get_RHS, U1, T_init, Tmax, z, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
+t_end, U_end, history_obs, test_f_o = time_scheme(get_RHS, U1, T_init, Tmax, z, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
+
+
+#fn1 = get_RHS(history_obs[-iterat], t, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
+#	fn = get_RHS(history_obs[-iterat-1], t, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
+#diff = history_obs[-iterat].rho - dt * fn1.rho - history_obs[-iterat-1].rho
+#	diff2 = fn1.rho - fn.rho
+#	print(diff2)
+#	trouve = np.all(np.abs(diff) > 1e-12)
+#	iterat += 1  
+#print(max(diff))	
+#print(trouve, iterat-1, diff)
 
 
 #%% RESULTS
@@ -186,6 +197,7 @@ ax[0].grid()
 ax[1].grid()
 ax[2].grid()
 fig.suptitle("Perturbation after Tmax = "+ str(Tmax))
+plt.close()
 
 #get_ipython().run_line_magic('matplotlib', 'inline')
 from IPython.display import HTML
@@ -239,7 +251,7 @@ if display_anim :
 # Resolution in a 1d case
 U_tmax = deepcopy(U_end)
 is_reverse = True
-t_start, U_start, history_reverse = time_scheme(get_minus_RHS, U_end, T_init, Tmax, z, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, reversed_source, is_reverse)
+t_start, U_start, history_reverse, test_f_r = time_scheme(get_minus_RHS, U_end, T_init, Tmax, z, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, reversed_source, is_reverse, history_obs)
 
 
 #%% RESULTS BACKWARD
@@ -259,6 +271,7 @@ ax[0].grid()
 ax[1].grid()
 ax[2].grid()
 fig.suptitle("After Tmax = 0")
+plt.close()
 
 if display_anim : 
     get_anim("Density", history_reverse[::10], (-0.02,0.02), z, 'backward')
@@ -268,7 +281,9 @@ if display_anim :
 #%% SUPERIMPOSITION OF BACKWARD AND FORWARD SOLUTION
 
 n = len(history_reverse)
-for i in range(0,n,int(n/5)):
+t_ax = np.append(t_ax, [t_ax[-1]+dt])
+t_ax = t_ax[::2]
+for i in range(0,n,int(n/3)):
     fig,ax = plt.subplots(3,1, figsize=(10,7))
     # forward
     ax[0].plot(z,history_obs[i].rho, 'b', label='Forward')
