@@ -30,7 +30,7 @@ z0 = 0
 zmax = 20e3
 # time 
 T_init = 0
-Tmax = 20
+Tmax = 20*0.005
 
 # user paramter
 display_anim = False
@@ -102,6 +102,7 @@ iz_source = 100
 t_ax = np.arange(T_init,Tmax,dt/2)
 source = get_source(t_ax, f0) #scipy.stats.norm.pdf(t_ax,10,1.5)
 
+source = np.ones(len(source))
 dist_z = abs(z - z[iz_source])
 factor_source = np.exp(-dist_z/1000)
 
@@ -165,17 +166,17 @@ plt.close()
 
 is_reverse = False
 # Resolution in a 1d case
-t_end, U_end, history_obs, test_f_o = time_scheme(get_RHS, U1, T_init, Tmax, z, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
+t_end, U_end, history_obs, test_f_o = time_scheme(get_RHS, U1, T_init, Tmax, z, "forward", U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
 
 
 #fn1 = get_RHS(history_obs[-iterat], t, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
-#	fn = get_RHS(history_obs[-iterat-1], t, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
+#    fn = get_RHS(history_obs[-iterat-1], t, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
 #diff = history_obs[-iterat].rho - dt * fn1.rho - history_obs[-iterat-1].rho
-#	diff2 = fn1.rho - fn.rho
-#	print(diff2)
-#	trouve = np.all(np.abs(diff) > 1e-12)
-#	iterat += 1  
-#print(max(diff))	
+#    diff2 = fn1.rho - fn.rho
+#    print(diff2)
+#    trouve = np.all(np.abs(diff) > 1e-12)
+#    iterat += 1  
+#print(max(diff))    
 #print(trouve, iterat-1, diff)
 
 
@@ -251,7 +252,8 @@ if display_anim :
 # Resolution in a 1d case
 U_tmax = deepcopy(U_end)
 is_reverse = True
-t_start, U_start, history_reverse, test_f_r = time_scheme(get_minus_RHS, U_end, T_init, Tmax, z, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, reversed_source, is_reverse, history_obs)
+#t_start, U_start, history_reverse, test_f_r = time_scheme(get_minus_RHS, U_end, T_init, Tmax, z,"checkpointing", U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, reversed_source, is_reverse, history_obs)
+t_start, U_start, history_reverse, test_f_r = time_scheme(get_RHS, U_end, T_init, Tmax, z,"checkpointing", U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, reversed_source, is_reverse, history_obs)
 
 
 #%% RESULTS BACKWARD
@@ -281,6 +283,7 @@ if display_anim :
 #%% SUPERIMPOSITION OF BACKWARD AND FORWARD SOLUTION
 
 n = len(history_reverse)
+print(len(history_obs), n)
 t_ax = np.append(t_ax, [t_ax[-1]+dt])
 t_ax = t_ax[::2]
 for i in range(0,n,int(n/3)):
