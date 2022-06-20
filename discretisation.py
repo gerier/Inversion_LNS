@@ -15,7 +15,6 @@ from scipy.interpolate import CubicSpline
 from copy import deepcopy
 
 
-
 #%% SPATIAL SCHEME
 
 # numerical scheme
@@ -75,7 +74,7 @@ def DF_C_4(U, dz, BC, need_BC= True):
 def DF_DC_4(U, dz, BC, wind, is_reverse=False):
     diff_U = np.zeros(len(U))
     interp_wind = interpolation(wind)
-    print(is_reverse)
+    
     if is_reverse:
         interp_wind *= -1
     for i in range(len(U)):
@@ -274,8 +273,37 @@ def EE(f, U_t, T_init, Tmax, z, *args):
     return t, U_t, np.array(history)
 
 
+#def checkpointing_function(checkpoint0, Nfr_1, Nfr_0, T_init, T_max, history):
+#    step_btw_fr0 = int(len(np.arange(T_init,Tmax,dt)) / Nfr_0)
+#    step_btw_fr1 = int(step_btw_fr0 / Nfr_1)
+#    checkpoint1 = []
+#    checkpoint0 = history[0:-1:step_btw_fr0]
+#    
+#    t = np.arange(T_init, Tmax, dt)
+#    
+#    for step0 in range(len(Nfr_0)-1,-1,-1):
+#        
+#        # actualise checkpoint1
+#        U_t = checkpoint0[step0]
+#        for it in range(len(step_btw_fr0)):
+#            tn = f(U_t, t[(step0-1)*step_btw_fr0,(step0)*step_btw_fr0], *args)
+#            aux_U_t.v = aux_U_t.v + tn.v * dt
+#            tndemi = f(U_t, t[(step0-1)*step_btw_fr0,(step0)*step_btw_fr0]+dt/2, *args)
+#            aux_U_t.rho = aux_U_t.rho + tndemi.rho * dt
+#            aux_U_t.p = aux_U_t.p + tndemi.p * dt
+#            # save if it is at a checkpoint time
+#            which_fr1, which_it_infr1 = divmod(it,step_btw_fr1)
+#            if which_it_infr1 == 0 :
+#                checkpoint1 += [aux_U_t]
+#        
+#        for step1 in range(len(Nfr_1)): 
+#            
+#            for it_1 in range(step_btw_fr1):
+                
+            
+
 # Definition of temporal scheme - Euler explicit with leap-frgo
-def EE(f, U_t, T_init, Tmax, z, *args):
+def EE(f, U_t, T_init, Tmax, z, propagation_type, *args):
     # we suppose here at initialisation that v in given at time t=0, and 
     # rho and p are given at time t=1/2
     fig,ax = plt.subplots(3,1)
@@ -285,25 +313,105 @@ def EE(f, U_t, T_init, Tmax, z, *args):
     
     # load the dt
     dt = args[9]
+    t_tab = np.arange(T_init,Tmax,dt)
     test_f = []
-    # create a vector to save state at each time
-    history = [deepcopy(U_t)]
-    for t in np.arange(T_init,Tmax,dt):
-        
-        if not args[11] :# need to change the order of treatment in the backward propagation 
+    
+    if propagation_type == "checkpointing":
+        Nfr_0 = 10
+        Nfr_1 = 0
+         
+        step_btw_fr0 = int(len(np.arange(T_init,Tmax,dt)) / Nfr_0)
+        step_btw_fr1 = int(step_btw_fr0 / (Nfr_1+1)) # Nfr_1 + 1 since we have the checkpoint0
+        checkpoint1 = []
+        checkpoint0 = deepcopy(args[12][::step_btw_fr0][:-1])
+        print(len(checkpoint0))
+        t_tab = np.append(t_tab, t_tab[-1]+dt)
+        history = []
+        #U_t = checkpointing_function(checkpoint0, Nfr_1, Nfr_0, T_init, T_max)
+    else : 
+        # create a vector to save state at each time
+           history = [deepcopy(U_t)]  
+    
+    for it, t in enumerate(t_tab):
+
+        if propagation_type == "forward" :# need to change the order of treatment in the backward propagation 
             tn = f(U_t, t, *args)
             U_t.v = U_t.v + tn.v * dt
             tndemi = f(U_t, t+dt/2, *args)
             U_t.rho = U_t.rho + tndemi.rho * dt
             U_t.p = U_t.p + tndemi.p * dt
-            test_f += [tn.v]
-        else :
+            test_f += [tndemi.rho]
+        elif propagation_type == "backward" :
             tn = f(U_t, t, *args)
             U_t.rho = U_t.rho + tn.rho * dt
             U_t.p = U_t.p + tn.p * dt
             tndemi = f(U_t, t+dt/2, *args)
             U_t.v = U_t.v + tndemi.v * dt
             test_f += [tndemi.v]
+        elif propagation_type == "checkpointing" :
+
+            which_fr, which_it_infr = divmod(len(t_tab) - 1 - it,step_btw_fr0)
+            which_fr1, which_it_infr1 = divmod(which_it_infr,step_btw_fr1)
+            
+            # option 1 : we are at the time of a checkpoint of level 0 - dt
+            if it==0 :
+                aux_U_t = deepcopy(checkpoint0[which_fr-1])
+                checkpoint1 = []
+                for it_fr1 in range((which_fr-1)*step_btw_fr0, len(t_tab)-1):
+                    tn = f(aux_U_t, t_tab[it_fr1], *args[:-1])
+                    aux_U_t.v = aux_U_t.v + tn.v * dt
+                    tndemi = f(aux_U_t, t_tab[it_fr1]+dt/2, *args[:-1])
+                    aux_U_t.rho = aux_U_t.rho + tndemi.rho * dt
+                    aux_U_t.p = aux_U_t.p + tndemi.p * dt
+                    test_f += [tndemi.rho]
+                    # save if it is at a checkpoint time
+                    which_fr1, which_it_infr1 = divmod(it_fr1+1-which_fr*step_btw_fr0,step_btw_fr1)
+                    if which_it_infr1 == 0 and which_fr1 != 0:
+                        checkpoint1 += [aux_U_t]
+                U_t = deepcopy(aux_U_t)
+                  
+            elif  which_it_infr == 0 and which_fr == 0:
+                # load the value of time t 
+                U_t = checkpoint0[which_fr]  
+                              
+                   
+            elif which_it_infr == 0 and which_fr != 0:
+                # load the value of time t 
+                U_t = checkpoint0[which_fr]
+                #  need to load new checkpoint1
+                aux_U_t = deepcopy(checkpoint0[which_fr-1])
+                checkpoint1 = []
+                for it_fr1 in range((which_fr-1)*step_btw_fr0, which_fr*step_btw_fr0):
+                    tn = f(aux_U_t, t_tab[it_fr1], *args[:-1])
+                    aux_U_t.v = aux_U_t.v + tn.v * dt
+                    tndemi = f(aux_U_t, t_tab[it_fr1]+dt/2, *args[:-1])
+                    aux_U_t.rho = aux_U_t.rho + tndemi.rho * dt
+                    aux_U_t.p = aux_U_t.p + tndemi.p * dt
+                    test_f += [tndemi.rho]
+                    # save if it is at a checkpoint time
+                    which_fr1, which_it_infr1 = divmod(it_fr1+1-(which_fr-1)*step_btw_fr0,step_btw_fr1)
+                    if which_it_infr1 == 0 and which_fr1 != 0:
+                        checkpoint1 += [aux_U_t]
+   
+            # option 2 :  we are at the time of a checkpoint of level 1
+            elif which_it_infr1 == 0 :
+                U_t = checkpoint1[which_fr1]
+                print("ok") 
+            # option 3 : other case
+            else :
+                if which_fr1 == 0 :
+                    aux_U_t = deepcopy(checkpoint0[which_fr])
+                else : 
+                    aux_U_t = deepcopy(checkpoint1[which_fr1])        
+                for it_fr1 in range(which_fr * step_btw_fr0 + which_fr1 * step_btw_fr1, len(t_tab)-it-1):
+                    tn = f(aux_U_t, t_tab[it_fr1], *args[:-1])
+                    aux_U_t.v = aux_U_t.v + tn.v * dt
+                    tndemi = f(aux_U_t, t_tab[it_fr1]+dt/2, *args[:-1])
+                    aux_U_t.rho = aux_U_t.rho + tndemi.rho * dt
+                    aux_U_t.p = aux_U_t.p + tndemi.p * dt
+                # save if it is at a checkpoint time
+                U_t = aux_U_t
+        
 #        if True : #not args[11] : 
 #            U_t =  U_t + f(U_t, t, *args) * dt 
 #            test_f += [f(U_t, t, *args).rho] 
