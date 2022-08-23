@@ -19,7 +19,7 @@ from scipy.interpolate import CubicSpline
 from copy import deepcopy
 
 import sys
-
+import time
 
 # definition of parameters
 
@@ -30,7 +30,7 @@ z0 = 0
 zmax = 20e3
 # time 
 T_init = 0
-Tmax = 20*0.005
+Tmax = 10 #100*0.005
 
 # user paramter
 display_anim = False
@@ -99,13 +99,14 @@ for i,param in enumerate(param_toset_onmesh):
 
 # set the source
 iz_source = 100
-t_ax = np.arange(T_init,Tmax,dt/2)
+t_ax = np.arange(T_init,Tmax+dt,dt/2)
 source = get_source(t_ax, f0) #scipy.stats.norm.pdf(t_ax,10,1.5)
 
-source = np.ones(len(source))
+#source = np.linspace(0, len(source)-1, len(source))
+
+
 dist_z = abs(z - z[iz_source])
 factor_source = np.exp(-dist_z/1000)
-
 
 # plot the source in time and space
 total_source = np.zeros((len(z), len(t_ax)))
@@ -125,11 +126,11 @@ plt.ylabel("Distance (km)")
 plt.close()
 
 source = [source, factor_source]
-reversed_source = [np.flip(source[0]), source[1]] 
+reversed_source = [np.flip(source[0][:-1]), source[1]] 
 
 plt.figure()
 plt.plot(t_ax, source[0], label="source")
-plt.plot(np.flip(t_ax), reversed_source[0], label="reverse source")
+#plt.plot(np.flip(t_ax), reversed_source[0], label="reverse source")
 plt.title("Form of the source applied on density on point z = "+str(z[iz_source]/1000)+"km")
 plt.xlabel('Time')
 plt.ylabel("Intensity")
@@ -166,8 +167,9 @@ plt.close()
 
 is_reverse = False
 # Resolution in a 1d case
-t_end, U_end, history_obs, test_f_o = time_scheme(get_RHS, U1, T_init, Tmax, z, "forward", U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
-
+start_time = time.time()
+t_end, U_end, history_obs = time_scheme(get_RHS, U1, T_init, Tmax, z, "forward", U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
+print(" Total time : ", time.time() - start_time)
 
 #fn1 = get_RHS(history_obs[-iterat], t, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
 #    fn = get_RHS(history_obs[-iterat-1], t, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse)
@@ -252,9 +254,10 @@ if display_anim :
 # Resolution in a 1d case
 U_tmax = deepcopy(U_end)
 is_reverse = True
-#t_start, U_start, history_reverse, test_f_r = time_scheme(get_minus_RHS, U_end, T_init, Tmax, z,"checkpointing", U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, reversed_source, is_reverse, history_obs)
-t_start, U_start, history_reverse, test_f_r = time_scheme(get_RHS, U_end, T_init, Tmax, z,"checkpointing", U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, reversed_source, is_reverse, history_obs)
-
+start_time = time.time() 
+#t_start, U_start, history_reverse = time_scheme(get_minus_RHS, U_end, T_init, Tmax, z,"checkpointing", U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, reversed_source, is_reverse, history_obs)
+t_start, U_start, history_reverse = time_scheme(get_RHS, U_end, T_init, Tmax, z,"checkpointing", U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, is_reverse, history_obs)
+print(" Total time : ", time.time() - start_time)
 
 #%% RESULTS BACKWARD
 
@@ -283,58 +286,40 @@ if display_anim :
 #%% SUPERIMPOSITION OF BACKWARD AND FORWARD SOLUTION
 
 n = len(history_reverse)
-print(len(history_obs), n)
 t_ax = np.append(t_ax, [t_ax[-1]+dt])
 t_ax = t_ax[::2]
-for i in range(0,n,int(n/3)):
-    fig,ax = plt.subplots(3,1, figsize=(10,7))
+for i in range(0,n,int(n/4)):
+    fig,ax = plt.subplots(3,2, figsize=(10,7))
     # forward
-    ax[0].plot(z,history_obs[i].rho, 'b', label='Forward')
-    ax[1].plot(z,history_obs[i].p, 'b')
-    ax[2].plot( (z[1:] + z[:-1])/2,history_obs[i].v, 'b')
+    ax[0,0].plot(z,history_obs[i].rho, 'b', label='Forward')
+    ax[1,0].plot(z,history_obs[i].p, 'b')
+    ax[2,0].plot( (z[1:] + z[:-1])/2,history_obs[i].v, 'b')
     # backward
-    ax[0].plot(z,history_reverse[n-1-i].rho, 'r', label='Backward')
-    ax[1].plot(z,history_reverse[n-1-i].p, 'r')
-    ax[2].plot( (z[1:] + z[:-1])/2,history_reverse[n-1-i].v, 'r')
+    ax[0,0].plot(z,history_reverse[n-1-i].rho, 'r', label='Backward')
+    ax[1,0].plot(z,history_reverse[n-1-i].p, 'r')
+    ax[2,0].plot( (z[1:] + z[:-1])/2,history_reverse[n-1-i].v, 'r')
+    # difference
+    ax[0,1].plot(z,abs(history_reverse[n-1-i].rho - history_obs[i].rho), 'k', label='Backward')
+    ax[1,1].plot(z,abs(history_reverse[n-1-i].p - history_obs[i].p), 'k')
+    ax[2,1].plot( (z[1:] + z[:-1])/2,abs(history_reverse[n-1-i].v - history_obs[i].v), 'k')
     # element to display 
-    ax[0].legend()
-    ax[0].set_xlabel("Distance on axis x (km)")
-    ax[1].set_xlabel("Distance on axis x (km)")
-    ax[2].set_xlabel("Distance on axis x (km)")
-    ax[0].set_ylabel("Density")
-    ax[1].set_ylabel("Pressure")
-    ax[2].set_ylabel("Velocity")
-    ax[0].grid()
-    ax[1].grid()
-    ax[2].grid()
+    ax[0,0].legend()
+    ax[0,0].set_xlabel("Distance on axis x (km)")
+    ax[1,0].set_xlabel("Distance on axis x (km)")
+    ax[2,0].set_xlabel("Distance on axis x (km)")
+    ax[0,0].set_ylabel("Density")
+    ax[1,0].set_ylabel("Pressure")
+    ax[2,0].set_ylabel("Velocity")
+    ax[0,1].set_xlabel("Distance on axis x (km)")
+    ax[1,1].set_xlabel("Distance on axis x (km)")
+    ax[2,1].set_xlabel("Distance on axis x (km)")
+    ax[0,1].set_ylabel("Difference Density")
+    ax[1,1].set_ylabel("Difference Pressure")
+    ax[2,1].set_ylabel("Difference Velocity")
+    ax[0,1].grid()
+    ax[1,1].grid()
+    ax[2,0].grid()
     fig.suptitle("Comparison of forward and backward solution at time (forward) t = "+str(t_ax[i]))
     plt.show()
     
  
-#%% RESOLUTION ADJOINT EQUATIONS
-
-if False:                                    
-    max_obs_rho = max( [max(history_obs[t].rho) for t in range(len(history_obs))])
-    max_obs_v = max( [max(history_obs[t].v) for t in range(len(history_obs))])
-    max_obs_p = max( [max(history_obs[t].p) for t in range(len(history_obs))])
-    
-    max_obs = [max_obs_rho, max_obs_v, max_obs_v]
-    
-    U_end = deepcopy(U_tmax)
-    t_start, U_start, history_adjoint = time_scheme(get_adjoint_RHS, U_end, Tmax, T_init, U0, T0, g, l, mu, kappa, gamma, Cv, h, dt, source, history_reverse, history_obs, d_receivers, max_obs)
-    
-    # Plot the model
-    fig,ax = plt.subplots(3,1, figsize=(10,7))
-    ax[0].plot(z,U_start.rho)
-    ax[1].plot(z,U_start.p)
-    ax[2].plot( (z[1:] + z[:-1])/2,U_start.v)
-    ax[0].set_xlabel("Altitude")
-    ax[1].set_xlabel("Altitude")
-    ax[2].set_xlabel("Altitude")
-    ax[0].set_ylabel("Density")
-    ax[1].set_ylabel("Pressure")
-    ax[2].set_ylabel("Velocity")
-    ax[0].grid()
-    ax[1].grid()
-    ax[2].grid()
-    fig.suptitle("A T = 0, the background")
