@@ -44,7 +44,7 @@ Tmax = 50
 ##################
 display_anim = False
 time_scheme = EE
-
+local_path = "/home/deos/s.gerier/PROJECTS/SIMULATIONS/DF_1D/Inversion_LNS/AcousticEquation/"
 
 ####################################
 #  MODEL PARAMETERS (A PRIORI MODEL)

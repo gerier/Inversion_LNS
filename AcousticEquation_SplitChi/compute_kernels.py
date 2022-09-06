@@ -7,10 +7,11 @@ Created on Mon Jun 13 09:02:52 2022
 """
 
 import sys
+from threading import local
 sys.path.insert(1, './Lib/')
 
 from discretisation import *
-from linearised_navier_stokes_acoustic_adjoint import *
+from linearised_navier_stokes_acoustic_adjoint_splitchi import *
 from parameters import *
 
 import numpy as np
@@ -20,9 +21,9 @@ import time
 
 
 # LOAD OBSERVATIONS AND SOLUTION WITH A PRIORI MODEL (in reversed time basis)
-history_obs = np.load("./BackUps/observation_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)
-history_reverse = np.load("./BackUps/reverse_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)
-history_adjoint = np.load("./BackUps/adjoint_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)
+history_obs = np.load(local_path+"/BackUps/observation_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)
+history_reverse = np.load(local_path+"/BackUps/reverse_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)
+history_adjoint = np.load(local_path+"/BackUps/adjoint_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)
 
 
 # COMPUTE KERNELS
