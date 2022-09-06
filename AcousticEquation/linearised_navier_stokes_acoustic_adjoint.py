@@ -68,7 +68,53 @@ class LNS_Variable:
         ax[1].grid()
         ax[2].grid()
         fig.suptitle(title)
+
+
+class LNS_Model:
+    def __init__(self,rho, c):
+        self.rho = rho
+        self.c = c
     
+    def __mul__(self,alpha):
+        self.rho *= alpha
+        self.c *= alpha
+        return self
+
+    def __add__(self, other):
+        self.rho += other.rho
+        self.c += other.c
+        return self
+    
+    def __sub__(self, other):
+        self.rho -= other.rho
+        self.c -= other.c
+        return self
+    
+    def __truediv__(self, alpha):
+        self.rho = self.rho / alpha
+        self.c =  self.c / alpha
+        return self
+    
+    def __neg__(self):
+        self.rho = -self.rho
+        self.v = -self.v
+        self.c = -self.c
+        return self
+    
+    def plot(self, abs, title):
+        fig,ax = plt.subplots(2,1, figsize=(10,7))
+        ax[0].plot(abs,self.rho)
+        ax[1].plot( (abs[1:] + abs[:-1])/2,self.c)
+        ax[0].set_xlabel("Distance on axis x (km)")
+        ax[1].set_xlabel("Distance on axis x (km)")
+        ax[0].set_ylabel("Density")
+        ax[1].set_ylabel("Wave velocity")
+        ax[0].grid()
+        ax[1].grid()
+        fig.suptitle(title)
+
+
+
 #%% EQUATIONS
 
 # Definition of function that describes the Linearised Navier-Stokes 
@@ -85,7 +131,7 @@ if True :
         # compute the contribution on qunatity of mvt
         S[1,:-1] = DF_C(U1.p, dz, BC_p1, False)                                                   # grad p1
         # compute the contribution on pressure
-        S[2,:] = U0.rho * 340**2 * DF_C(U1.v, dz, BC_v1)                                  # gamma p1 div v0
+        S[2,:] = U0.rho * interpolation(U0.c**2) * DF_C(U1.v, dz, BC_v1)                                  # gamma p1 div v0
         
         return LNS_Variable(S[0,:], 2 * S[1,:-1] / (U0.rho[1:]+U0.rho[:-1]), S[2,:])
 
@@ -157,10 +203,10 @@ def get_adjoint_RHS(Ustar, t, previous_Ustar, U0, T0, g, l, mu, kappa, gamma, Cv
     Fadjoint = dchi(reverse_U, observation_U, t, dt, index_receivers, max_obs)
 
     U[1,:-1] += DF_C(Ustar.p, dz, BC_pstar, False)                        # grad ( gamma p* p0)
-    U[1,:-1] += Fadjoint[1,:-1]
+    # U[1,:-1] += Fadjoint[1,:-1]
     
-    U[2,:] += U0.rho * 340**2 * DF_C(Ustar.v, dz, BC_vstar)                          # gamma p* div v0
-    U[2,:] += Fadjoint[2,:]
+    U[2,:] += U0.rho * interpolation(U0.c**2) * DF_C(Ustar.v, dz, BC_vstar)                          # gamma p* div v0
+    U[2,:] += Fadjoint[2,:] * (U0.rho * interpolation(U0.c**2))
     
     return previous_Ustar + LNS_Variable(U[0,:], 2 * U[1,:-1] / (U0.rho[1:]+U0.rho[:-1]), U[2,:]) * dt 
 
@@ -175,9 +221,12 @@ def get_kernels_centered(rho_a, v_a, p_a, rho_p, v_p, p_p, U0, T0, kappa, gamma,
     BC_vp = [v_p[-2], v_p[-1], v_p[0], v_p[1]]
 
     # kernel in rho0
-    K[0,:] -= interpolation(dtvp * v_a)    
-    K[0,:] += DF_C(v_p, dz, BC_vp) * p_a / U0.rho
+    K[0,:] += interpolation(dtvp * v_a)    
+    K[0,:] -= DF_C(v_p, dz, BC_vp) * p_a / U0.rho
     
+    # kernel in c0
+    K[1,:] = - 2 * DF_C(v_p, dz, BC_vp) * p_a / interpolation(U0.c)
+
     return K
     
 
@@ -196,7 +245,7 @@ def get_kernels(hist_adjoint, hist_backprop, U0, T0, kappa, gamma, Cv, dt, dz, o
         rho_p = (hist_backprop[t].rho + hist_backprop[t+1].rho)/2  # mean at time n+1/2
         
         p_a = (hist_adjoint[t].p + hist_adjoint[t+1].p)/2          # mean at time n+1/2
-        p_p = (hist_backprop[t].p + hist_backprop[t + 1].p)/2         # mean at time n+1/2 
+        p_p = (hist_backprop[t].p + hist_backprop[t + 1].p)/2      # mean at time n+1/2 
         
         v_a = hist_adjoint[t].v                                   # at time n
         v_p = hist_backprop[t].v                                  # at time n
