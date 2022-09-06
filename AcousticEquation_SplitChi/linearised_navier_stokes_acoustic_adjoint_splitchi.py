@@ -106,16 +106,15 @@ class LNS_Model:
         return self
     
     def plot(self, abs, title):
-        fig,ax = plt.subplots(3,1, figsize=(10,7))
+        fig,ax = plt.subplots(2,1, figsize=(10,7))
         ax[0].plot(abs,self.rho)
-        ax[2].plot( (abs[1:] + abs[:-1])/2,self.c)
+        ax[1].plot( (abs[1:] + abs[:-1])/2,self.c)
         ax[0].set_xlabel("Distance on axis x (km)")
         ax[1].set_xlabel("Distance on axis x (km)")
         ax[0].set_ylabel("Density")
         ax[1].set_ylabel("Wave velocity")
         ax[0].grid()
         ax[1].grid()
-        ax[2].grid()
         fig.suptitle(title)
     
 #%% EQUATIONS
@@ -134,7 +133,7 @@ if True :
         # compute the contribution on qunatity of mvt
         S[1,:-1] = DF_C(U1.p, dz, BC_p1, False)                                                   # grad p1
         # compute the contribution on pressure
-        S[2,:] = U0.rho * 340**2 * DF_C(U1.v, dz, BC_v1)                                  # gamma p1 div v0
+        S[2,:] = U0.rho * interpolation(U0.c**2) * DF_C(U1.v, dz, BC_v1)                                  # gamma p1 div v0
         
         return LNS_Variable(S[0,:], 2 * S[1,:-1] / (U0.rho[1:]+U0.rho[:-1]), S[2,:])
 
@@ -212,9 +211,9 @@ def get_adjoint_RHS(Ustar, t, previous_Ustar, U0, T0, g, l, mu, kappa, gamma, Cv
     if which_chi == "velocity" : 
         U[1,:-1] += Fadjoint[1,:-1]
     
-    U[2,:] += U0.rho * U0.v0**2 * DF_C(Ustar.v, dz, BC_vstar)                          # gamma p* div v0
+    U[2,:] += U0.rho * interpolation(U0.c**2) * DF_C(Ustar.v, dz, BC_vstar)                          # gamma p* div v0
     if which_chi == "pressure":
-        U[2,:] += Fadjoint[2,:] * (U0.rho * 340**2)
+        U[2,:] += Fadjoint[2,:] * (U0.rho * interpolation(U0.c**2))
     
     return previous_Ustar + LNS_Variable(U[0,:], 2 * U[1,:-1] / (U0.rho[1:]+U0.rho[:-1]), U[2,:]) * dt 
 
@@ -233,7 +232,7 @@ def get_kernels_centered(rho_a, v_a, p_a, rho_p, v_p, p_p, U0, T0, kappa, gamma,
     K[0,:] -= DF_C(v_p, dz, BC_vp) * p_a / U0.rho
     
     #  kernel for c0 (wave velocity)
-    K[1,:] = - 2 * DF_C(v_p, dz, BC_vp) * p_a / 340
+    K[1,:] = - 2 * DF_C(v_p, dz, BC_vp) * p_a / interpolation(U0.c)
 
     return K
     

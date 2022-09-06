@@ -108,11 +108,11 @@ for i,param in enumerate(param_toset_onmesh):
 ###########################
 [GT_rho0, GT_v0, GT_p0, GT_T0,GT_c, GT_g, GT_gamma, GT_Cv] = deepcopy(param_toset_onmesh)
 
-factor = 2
+factor = 1.2
 obs_start = 90 + nb_index_neg
 obs_end = 120 + nb_index_neg
 
-for param in GT_v0, GT_rho0:
+for param in [GT_c]: #GT_v0, GT_rho0:
     param[obs_start:obs_end] = factor * param[obs_start:obs_end]
 
 
@@ -162,10 +162,10 @@ plt.close()
 ##########################
 
 # define vectors of the system
-v0_demi = (v0[1:] + v0[:-1])/2
-GT_v0_demi = (GT_v0[1:] + GT_v0[:-1])/2 
-U0 = LNS_Variable(rho0, v0_demi, p0) 
-GT_U0 = LNS_Variable(GT_rho0, GT_v0_demi, GT_p0) 
+c0_demi = (c[1:] + c[:-1])/2
+GT_c0_demi = (GT_c[1:] + GT_c[:-1])/2 
+U0 = LNS_Model(rho0, c0_demi) 
+GT_U0 = LNS_Model(GT_rho0, GT_c0_demi) 
 
 # Plot the model
 U0.plot(z,"The  a priori background")
