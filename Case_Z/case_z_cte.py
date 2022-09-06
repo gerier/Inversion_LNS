@@ -6,6 +6,10 @@ Created on Mon Jun 13 09:02:52 2022
 @author: s.gerier
 """
 
+
+import sys
+sys.path.insert(1, '../Lib/')
+
 from discretisation import *
 from linearised_navier_stokes_testdc import *
 
@@ -30,7 +34,7 @@ z0 = 0
 zmax = 20e3
 # time 
 T_init = 0
-Tmax = 10 #100*0.005
+Tmax = 50 #100*0.005
 
 # user paramter
 display_anim = False
@@ -244,9 +248,9 @@ def get_anim(parameter_toplot, history, limits, z, propagation) :
 
 
 if display_anim : 
-    get_anim("Density", history_obs[::10], (-0.02,0.02), z, 'forward')
-    get_anim("Velocity", history_obs[::10], (-4,4), z, 'forward')
-    get_anim("Pressure", history_obs[::10], (-2000,2000), z, 'forward')
+    get_anim("Density", history_obs[::10], (-0.0006,0.0006), z, 'forward')
+    get_anim("Velocity", history_obs[::10], (-0.01,0.02), z, 'forward')
+    get_anim("Pressure", history_obs[::10], (-6,6), z, 'forward')
 
 
 #%% BACKWARD RESOLUTION

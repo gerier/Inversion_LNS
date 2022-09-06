@@ -34,9 +34,33 @@ def chi(U0, history_obs, index_receivers, max_obs, dt):
         CHI[1] += sum((history_calc[t].v[index_receivers] - history_obs[t].v[index_receivers])**2)
     CHI *= dt
 
+    if False :
+        # plots to test
+        plt.figure()
+        plt.plot([ history_calc[t].p[index_receivers] for t in range(len(history_obs))], label="calc p")
+        plt.plot([ history_obs[t].p[index_receivers] for t in range(len(history_obs))], label="obs p")
+        plt.legend()
+        plt.figure()
+        plt.plot([history_calc[t].p[index_receivers] - history_obs[t].p[index_receivers] for t in range(len(history_obs))], label="diff")
+        plt.figure()
+        plt.plot([(history_calc[t].p[index_receivers] - history_obs[t].p[index_receivers])**2 for t in range(len(history_obs))], label="diff ** 2")
+        plt.show()
+
+        plt.figure()
+        plt.plot([ history_calc[t].v[index_receivers] for t in range(len(history_obs))], label="calc v")
+        plt.plot([ history_obs[t].v[index_receivers] for t in range(len(history_obs))], label="obs v")
+        plt.legend()
+        plt.figure()
+        plt.plot([history_calc[t].v[index_receivers] - history_obs[t].v[index_receivers] for t in range(len(history_obs))], label="vdiff")
+        plt.figure()
+        plt.plot([(history_calc[t].v[index_receivers] - history_obs[t].v[index_receivers])**2 for t in range(len(history_obs))], label="vdiff **2")
+        plt.show()
+
+        print("For pressure : ", CHI[2], ", for velocity : ", CHI[1])
+    
     # normalisation
     #CHI[0] = CHI[0] / max_obs[0]
-    CHI[2] = CHI[2] /  max_obs[2] 
+    CHI[2] = CHI[2] / max_obs[2] 
     CHI[1] = CHI[1] / max_obs[1]
 
     return CHI/2
@@ -49,20 +73,22 @@ max_obs_v = [ max([abs(history_obs[t].v[k]) for t in range(len(history_obs))]) f
 max_obs_p = [ max([abs(history_obs[t].p[k]) for t in range(len(history_obs))]) for k in index_receivers]
 max_obs = [max_obs_rho, max_obs_v, max_obs_p]
 
-start_k = -100+nb_index_neg
-end_k = 300+nb_index_neg
+start_k = -120+nb_index_neg#-100+nb_index_neg #-100
+end_k = 320+nb_index_neg #300+nb_index_neg #300
 
-drho = 0.1 * U0.rho[0]
+drho = 0.01 * U0.rho[0]
+drho_pixel = 1
 
 chi_rho = chi(U0, history_obs, index_receivers, max_obs, dt)
 
-K_i = np.zeros((3,len(np.arange(start_k,end_k+1,5))))
+K_i = np.zeros((3,len(np.arange(start_k,end_k+drho_pixel,drho_pixel))))
 K_approach = np.zeros(len(K_i[0,:]))
 
-for it,i in enumerate(range(start_k, end_k+1,5)):
+for it,i in enumerate(range(start_k, end_k+drho_pixel,drho_pixel)):
+    #print("Didcontinuité à ", i-nb_index_neg)
     # add a delta on one component
     U0_rho_di = deepcopy(U0)
-    U0_rho_di.rho[i:i+5] += drho
+    U0_rho_di.rho[i:i+drho_pixel] += drho
     # compute chi for rho_i
     chi_rho_i = chi(U0_rho_di, history_obs, index_receivers, max_obs, dt)
     # compute dX
@@ -83,15 +109,15 @@ K_approach = K_i[1,:] + K_i[2,:]
 
 
 plt.figure()
-plt.plot(z[np.arange(start_k,end_k+1,5)], K_approach)
+plt.plot(z[np.arange(start_k,end_k+1,drho_pixel)], K_approach)
 plt.plot(z[index_source],0)
 plt.plot(z[index_receivers],0)
 plt.title("Approached kernel")
 plt.grid()
 plt.show()
 
-
-np.save("./BackUps/kernel_approx_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), K_approach)
-np.save("./BackUps/kernel_v_approx_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), K_i[1,:])
-np.save("./BackUps/kernel_p_approx_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), K_i[2,:])
+if True :
+    np.save("./BackUps/kernel_approx_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), K_approach)
+    np.save("./BackUps/kernel_v_approx_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), K_i[1,:])
+    np.save("./BackUps/kernel_p_approx_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), K_i[2,:])
 

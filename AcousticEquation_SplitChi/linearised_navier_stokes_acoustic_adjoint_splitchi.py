@@ -68,6 +68,55 @@ class LNS_Variable:
         ax[1].grid()
         ax[2].grid()
         fig.suptitle(title)
+
+
+class LNS_Model:
+    def __init__(self,rho, c):
+        self.rho = rho
+        self.c = c
+    
+    def __mul__(self,alpha):
+        self.rho *= alpha
+        self.v *= alpha
+        self.p *= alpha
+        return self
+
+    def __add__(self, other):
+        self.rho += other.rho
+        self.v += other.v
+        self.p += other.p
+        return self
+    
+    def __sub__(self, other):
+        self.rho -= other.rho
+        self.v -= other.v
+        self.p -= other.p
+        return self
+    
+    def __truediv__(self, alpha):
+        self.rho = self.rho / alpha
+        self.v =  self.v / alpha
+        self.p = self.p  / alpha
+        return self
+    
+    def __neg__(self):
+        self.rho = -self.rho
+        self.v = -self.v
+        self.p = -self.p
+        return self
+    
+    def plot(self, abs, title):
+        fig,ax = plt.subplots(3,1, figsize=(10,7))
+        ax[0].plot(abs,self.rho)
+        ax[2].plot( (abs[1:] + abs[:-1])/2,self.c)
+        ax[0].set_xlabel("Distance on axis x (km)")
+        ax[1].set_xlabel("Distance on axis x (km)")
+        ax[0].set_ylabel("Density")
+        ax[1].set_ylabel("Wave velocity")
+        ax[0].grid()
+        ax[1].grid()
+        ax[2].grid()
+        fig.suptitle(title)
     
 #%% EQUATIONS
 
@@ -160,10 +209,12 @@ def get_adjoint_RHS(Ustar, t, previous_Ustar, U0, T0, g, l, mu, kappa, gamma, Cv
     Fadjoint = dchi(reverse_U, observation_U, t, dt, index_receivers, max_obs, which_chi)
 
     U[1,:-1] += DF_C(Ustar.p, dz, BC_pstar, False)                        # grad ( gamma p* p0)
-    U[1,:-1] += Fadjoint[1,:-1]
+    if which_chi == "velocity" : 
+        U[1,:-1] += Fadjoint[1,:-1]
     
-    U[2,:] += U0.rho * 340**2 * DF_C(Ustar.v, dz, BC_vstar)                          # gamma p* div v0
-    U[2,:] += Fadjoint[2,:]
+    U[2,:] += U0.rho * U0.v0**2 * DF_C(Ustar.v, dz, BC_vstar)                          # gamma p* div v0
+    if which_chi == "pressure":
+        U[2,:] += Fadjoint[2,:] * (U0.rho * 340**2)
     
     return previous_Ustar + LNS_Variable(U[0,:], 2 * U[1,:-1] / (U0.rho[1:]+U0.rho[:-1]), U[2,:]) * dt 
 
@@ -178,9 +229,12 @@ def get_kernels_centered(rho_a, v_a, p_a, rho_p, v_p, p_p, U0, T0, kappa, gamma,
     BC_vp = [v_p[-2], v_p[-1], v_p[0], v_p[1]]
 
     # kernel in rho0
-    K[0,:] -= interpolation(dtvp * v_a)    
-    K[0,:] += DF_C(v_p, dz, BC_vp) * p_a / U0.rho
+    K[0,:] += interpolation(dtvp * v_a)    
+    K[0,:] -= DF_C(v_p, dz, BC_vp) * p_a / U0.rho
     
+    #  kernel for c0 (wave velocity)
+    K[1,:] = - 2 * DF_C(v_p, dz, BC_vp) * p_a / 340
+
     return K
     
 

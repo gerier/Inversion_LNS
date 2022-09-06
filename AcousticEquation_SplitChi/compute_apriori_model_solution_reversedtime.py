@@ -43,7 +43,7 @@ elif which_method  == "checkpointing" :
 
 # SAVE
 
-np.save("./BackUps/reverse_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), np.array(history_reverse))
+np.save(local_path+"/BackUps/reverse_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), np.array(history_reverse))
 
 
 
@@ -61,7 +61,7 @@ if display_anim :
 #%% SUPERIMPOSITION OF BACKWARD AND FORWARD SOLUTION
 
 # load observations     
-history_obs = np.load("./BackUps/observation_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)
+history_obs = np.load(local_path+"/BackUps/observation_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)
 
 # comparison
 n = len(history_reverse)

@@ -107,9 +107,9 @@ for contrib in [0,1]:
     plt.show()
 
     # save the resulted kernel
-    np.save("./BackUps/kernel_contrib"+which_chi+str(contrib)+"_approx_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), K_approach)
-    np.save("./BackUps/kernel_contrib"+which_chi+str(contrib)+"_v_approx_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), K_i[1,:])
-    np.save("./BackUps/kernel__contrib"+which_chi+str(contrib)+"_p_approx_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), K_i[2,:])
+    np.save(local_path+"/BackUps/kernel_contrib"+which_chi+str(contrib)+"_approx_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), K_approach)
+    np.save(local_path+"/BackUps/kernel_contrib"+which_chi+str(contrib)+"_v_approx_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), K_i[1,:])
+    np.save(local_path+"/BackUps/kernel__contrib"+which_chi+str(contrib)+"_p_approx_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), K_i[2,:])
 
 
 

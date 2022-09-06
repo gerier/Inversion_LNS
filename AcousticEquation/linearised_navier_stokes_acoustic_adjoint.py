@@ -157,7 +157,7 @@ def get_adjoint_RHS(Ustar, t, previous_Ustar, U0, T0, g, l, mu, kappa, gamma, Cv
     Fadjoint = dchi(reverse_U, observation_U, t, dt, index_receivers, max_obs)
 
     U[1,:-1] += DF_C(Ustar.p, dz, BC_pstar, False)                        # grad ( gamma p* p0)
-    U[1,:-1] -= Fadjoint[1,:-1]
+    U[1,:-1] += Fadjoint[1,:-1]
     
     U[2,:] += U0.rho * 340**2 * DF_C(Ustar.v, dz, BC_vstar)                          # gamma p* div v0
     U[2,:] += Fadjoint[2,:]
@@ -175,7 +175,7 @@ def get_kernels_centered(rho_a, v_a, p_a, rho_p, v_p, p_p, U0, T0, kappa, gamma,
     BC_vp = [v_p[-2], v_p[-1], v_p[0], v_p[1]]
 
     # kernel in rho0
-    K[0,:] += interpolation(dtvp * v_a)    
+    K[0,:] -= interpolation(dtvp * v_a)    
     K[0,:] += DF_C(v_p, dz, BC_vp) * p_a / U0.rho
     
     return K

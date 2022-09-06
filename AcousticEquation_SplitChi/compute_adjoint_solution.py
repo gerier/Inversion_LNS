@@ -19,8 +19,8 @@ import matplotlib.pyplot as plt
 
 
 # LOAD OBSERVATIONS AND SOLUTION WITH A PRIORI MODEL (in reversed time basis)
-history_obs = np.load("./BackUps/observation_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)
-history_reverse = np.load("./BackUps/reverse_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)
+history_obs = np.load(local_path+"/BackUps/observation_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)
+history_reverse = np.load(local_path+"/BackUps/reverse_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)
 
 
 # PLOT THE PERTURBATION SOURCE OF THE ADJOINT EQUATIONS
@@ -31,7 +31,6 @@ max_obs_v = [ max([abs(history_obs[t].v[k]) for t in range(len(history_obs))]) f
 max_obs_p = [ max([abs(history_obs[t].p[k]) for t in range(len(history_obs))]) for k in index_receivers]
 max_obs = [max_obs_rho, max_obs_v, max_obs_p]
 
-which_chi = "velocity"
 
 plt.figure()
 for t in range(len(history_reverse)):
@@ -47,7 +46,7 @@ t_start, U_start, history_adjoint = time_scheme(get_adjoint_RHS, U_start, T_init
 
 
 # SAVE RESULT
-np.save("./BackUps/adjoint_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), np.array(history_adjoint))
+np.save(local_path+"/BackUps/adjoint_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), np.array(history_adjoint))
 
 
 # PLOT RESULT

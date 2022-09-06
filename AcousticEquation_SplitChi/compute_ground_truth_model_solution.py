@@ -28,4 +28,4 @@ start_time = time.time()
 t_end, U_end, history_obs = time_scheme(get_RHS, U1, T_init, Tmax, z, "forward", GT_U0, T0, g, 0, 0, 0, gamma, Cv, h, dt, source, False)
 print(" Total time : ", time.time() - start_time)
 
-np.save("./BackUps/observation_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), np.array(history_obs))
+np.save(local_path+"/BackUps/observation_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers]), np.array(history_obs))

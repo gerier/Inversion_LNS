@@ -44,7 +44,8 @@ Tmax = 50
 ##################
 display_anim = False
 time_scheme = EE
-
+local_path = '/home/deos/s.gerier/PROJECTS/SIMULATIONS/DF_1D/Inversion_LNS/AcousticEquation_SplitChi/'
+which_chi = "pressure"
 
 ####################################
 #  MODEL PARAMETERS (A PRIORI MODEL)
@@ -112,7 +113,7 @@ factor = 2
 obs_start = 90 + nb_index_neg
 obs_end = 120 + nb_index_neg
 
-for param in GT_v0, GT_rho0:
+for param in GT_c, GT_rho0:
     param[obs_start:obs_end] = factor * param[obs_start:obs_end]
 
 
@@ -162,10 +163,12 @@ plt.close()
 ##########################
 
 # define vectors of the system
-v0_demi = (v0[1:] + v0[:-1])/2
-GT_v0_demi = (GT_v0[1:] + GT_v0[:-1])/2 
+#v0_demi = (v0[1:] + v0[:-1])/2
+v0_demi = (c[1:] + c[:-1])/2
+#GT_v0_demi = (GT_v0[1:] + GT_v0[:-1])/2 
+GT_c_demi = (GT_c[1:] + GT_c[:-1])/2 
 U0 = LNS_Variable(rho0, v0_demi, p0) 
-GT_U0 = LNS_Variable(GT_rho0, GT_v0_demi, GT_p0) 
+GT_U0 = LNS_Variable(GT_rho0, GT_c_demi, GT_p0) 
 
 # Plot the model
 U0.plot(z,"The  a priori background")
