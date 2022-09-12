@@ -104,7 +104,7 @@ class LNS_Model:
     def plot(self, abs, title):
         fig,ax = plt.subplots(2,1, figsize=(10,7))
         ax[0].plot(abs,self.rho)
-        ax[1].plot( (abs[1:] + abs[:-1])/2,self.c)
+        ax[1].plot(abs,self.c)
         ax[0].set_xlabel("Distance on axis x (km)")
         ax[1].set_xlabel("Distance on axis x (km)")
         ax[0].set_ylabel("Density")
@@ -124,42 +124,40 @@ if True :
     def DF_Sigma_C_C(U1, U0, dz, gamma, is_reverse, DF_C):
         # initialise
         S  = np.zeros((3,len(U1.rho)))
-        
+        # boundary conditions
         BC_v1 = [U1.v[-2], U1.v[-1], U1.v[0], U1.v[1]]
         BC_p1 = [U1.p[-2], U1.p[-1], U1.p[0], U1.p[1]]
-        
         # compute the contribution on qunatity of mvt
         S[1,:-1] = DF_C(U1.p, dz, BC_p1, False)                                                   # grad p1
         # compute the contribution on pressure
-        S[2,:] = U0.rho * interpolation(U0.c**2) * DF_C(U1.v, dz, BC_v1)                                  # gamma p1 div v0
-        
-        return LNS_Variable(S[0,:], 2 * S[1,:-1] / (U0.rho[1:]+U0.rho[:-1]), S[2,:])
+        S[2,:] = U0.rho * U0.c**2 * DF_C(U1.v, dz, BC_v1)                                  # gamma p1 div v0
+        return S
 
     
     
-    def F(U1, U0, it, source, n, gamma):
+    def F(z, t, f0, index_source):
+        # initialisation
+        f = np.zeros((3,len(z)))
         # define source term
-        f = np.zeros((3,n))
-        source_time = source[0]
-        source_spatial = source[1]
-        # compute the contribution on density
-        for i in range(n):
-            f[0,i] = source_time[it]/100 * source_spatial[i]
+        source = get_source_t_x(z, t, f0, index_source)
         # compute the contribution on quantity of mvt
-        f[1,:-1] = (f[0,1:]+f[0,:-1])/2 
+        f[1,:-1] = (source[1:]+source[:-1])/2 
+        return f
 
-        return LNS_Variable(0*f[0,:], 2 * f[1,:-1] / (U0.rho[1:]+U0.rho[:-1]), f[2,:])
-    
     
     # Definition of resolution spatial
     def get_RHS(U1, t, previous_U, U0, T0, g, l, mu, kappa, gamma, R, dz, dt, source, is_reverse, order_DF=4):
+        # initialisation
         if order_DF == 4:
             DF_C = DF_C_4
         else :
             DF_C = DF_C_2
-            
-        RHS_c = F(U1, U0, int(np.round(2*t/dt)), source, len(U1.rho), gamma) \
+        z, f0, index_source = source 
+        # computation of the right hand side of the LNS equation
+        RHS_c = F(z,t,f0,index_source) \
                 - DF_Sigma_C_C(U1, U0, dz, gamma, is_reverse, DF_C)
+        # Change the tye of RHS_c to LNS_Variable
+        RHS_c = LNS_Variable(RHS_c[0,:], 2 * RHS_c[1,:-1] / (U0.rho[1:] + U0.rho[:-1]), RHS_c[2,:])
         return previous_U + RHS_c * dt
 
     def get_minus_RHS(U1, t, U0, T0, g, l, mu, kappa, gamma, R, dz, dt, source, is_reverse, order_DF=4):
@@ -169,8 +167,16 @@ if True :
 
 def get_source(t,f0):
     t0 = 1.2/f0
-    print("source ok")
     return np.exp(-4 * np.pi**2 * f0**2 * (t-t0)**2)
+
+def get_source_t_x(z, t,f0, index_source):
+    # define source time function
+    time_source = get_source(t,f0) / 100 
+    # define the locality of the source
+    spatial_source = z == z[index_source]
+    # create source from temporal and spatial info
+    source = time_source * spatial_source
+    return source
 
 
 #%% ADJOINT EQUAITONS
@@ -205,8 +211,8 @@ def get_adjoint_RHS(Ustar, t, previous_Ustar, U0, T0, g, l, mu, kappa, gamma, Cv
     U[1,:-1] += DF_C(Ustar.p, dz, BC_pstar, False)                        # grad ( gamma p* p0)
     # U[1,:-1] += Fadjoint[1,:-1]
     
-    U[2,:] += U0.rho * interpolation(U0.c**2) * DF_C(Ustar.v, dz, BC_vstar)                          # gamma p* div v0
-    U[2,:] += Fadjoint[2,:] * (U0.rho * interpolation(U0.c**2))
+    U[2,:] += U0.rho * U0.c**2 * DF_C(Ustar.v, dz, BC_vstar)                          # gamma p* div v0
+    U[2,:] += Fadjoint[2,:] * (U0.rho * U0.c**2)
     
     return previous_Ustar + LNS_Variable(U[0,:], 2 * U[1,:-1] / (U0.rho[1:]+U0.rho[:-1]), U[2,:]) * dt 
 
@@ -225,7 +231,7 @@ def get_kernels_centered(rho_a, v_a, p_a, rho_p, v_p, p_p, U0, T0, kappa, gamma,
     K[0,:] -= DF_C(v_p, dz, BC_vp) * p_a / U0.rho
     
     # kernel in c0
-    K[1,:] = - 2 * DF_C(v_p, dz, BC_vp) * p_a / interpolation(U0.c)
+    K[1,:] = - 2 * DF_C(v_p, dz, BC_vp) * p_a / U0.c
 
     return K
     
