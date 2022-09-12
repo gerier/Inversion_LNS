@@ -39,10 +39,10 @@ def chi(U0, history_obs, index_receivers, max_obs, dt, which_chi):
 
     # normalisation
     CHI[0] = CHI[0] / max_obs[0]
-    CHI[2] = CHI[2] /  max_obs[2] 
+    CHI[2] = CHI[2] / max_obs[2] 
     CHI[1] = CHI[1] / max_obs[1]
 
-    return CHI
+    return CHI / 2 
 
 
 history_obs = np.load("./BackUps/observation_"+str(z0)+"_"+str(zmax)+"_"+str(h)+"_"+str(Tmax)+"_"+str(dt)+"_"+str(z[index_source])+"_"+str(z[index_receivers])+".npy", allow_pickle=True)

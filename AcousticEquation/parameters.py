@@ -112,14 +112,14 @@ factor = 1.2
 obs_start = 90 + nb_index_neg
 obs_end = 120 + nb_index_neg
 
-for param in [GT_c]: #GT_v0, GT_rho0:
+for param in [GT_c, GT_rho0]: #GT_v0, GT_rho0:
     param[obs_start:obs_end] = factor * param[obs_start:obs_end]
 
 
 ########################
 # DEFINE SOURCE ON MESH
 ########################
-# set the source
+# set the source fr plots
 index_source = 50+nb_index_neg
 t_ax = np.arange(T_init,Tmax+dt,dt/2)
 source = get_source(t_ax, f0) 
@@ -127,10 +127,6 @@ factor_source = (z == z[index_source]) #np.exp(-2*dist_z/1000)
  
 source = [source, factor_source]
 
-
-##############
-# PLOT SOURCE
-##############
 if False:
     # plot the source in time and space
     total_source = np.zeros((len(z), len(t_ax)))
@@ -156,16 +152,17 @@ plt.ylabel("Intensity")
 plt.show()
 plt.close()
 
+# set the source
+source = [z, f0, index_source]
+
 
 ##########################
 # INTIALISATION OF MODELS
 ##########################
 
 # define vectors of the system
-c0_demi = (c[1:] + c[:-1])/2
-GT_c0_demi = (GT_c[1:] + GT_c[:-1])/2 
-U0 = LNS_Model(rho0, c0_demi) 
-GT_U0 = LNS_Model(GT_rho0, GT_c0_demi) 
+U0 = LNS_Model(rho0, c) 
+GT_U0 = LNS_Model(GT_rho0, GT_c) 
 
 # Plot the model
 U0.plot(z,"The  a priori background")

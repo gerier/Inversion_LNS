@@ -24,7 +24,8 @@ def chi(U0, history_obs, index_receivers, max_obs, dt):
     # init
     CHI = np.zeros(3)
     # get Ucalc
-    U1 = deepcopy(U0) * 0 
+    U1 = LNS_Variable(np.zeros(len(z)), np.zeros(len(z)-1), np.zeros(len(z))) 
+
     _, _, history_calc = time_scheme(get_RHS, U1, T_init, Tmax, z, "forward", U0, T0, g, 0, 0, 0, gamma, Cv, h, dt, source, False)
 
     # Ucalc - Uobs
@@ -73,28 +74,36 @@ max_obs_v = [ max([abs(history_obs[t].v[k]) for t in range(len(history_obs))]) f
 max_obs_p = [ max([abs(history_obs[t].p[k]) for t in range(len(history_obs))]) for k in index_receivers]
 max_obs = [max_obs_rho, max_obs_v, max_obs_p]
 
-start_k = -120+nb_index_neg#-100+nb_index_neg #-100
-end_k = 320+nb_index_neg #300+nb_index_neg #300
+start_k = -70+nb_index_neg#-100+nb_index_neg #-100
+end_k = 230+nb_index_neg #300+nb_index_neg #300
 
-drho = 0.01 * U0.rho[0]
-drho_pixel = 1
+
+drho = 0.00 * U0.rho[0]
+d_pixel = 1
+
+
+dc = 0.01 * U0.c[0]
+d_pixel = 1
+
 
 chi_rho = chi(U0, history_obs, index_receivers, max_obs, dt)
 
-K_i = np.zeros((3,len(np.arange(start_k,end_k+drho_pixel,drho_pixel))))
+K_i = np.zeros((3,len(np.arange(start_k,end_k+d_pixel,d_pixel))))
 K_approach = np.zeros(len(K_i[0,:]))
 
-for it,i in enumerate(range(start_k, end_k+drho_pixel,drho_pixel)):
+for it,i in enumerate(range(start_k, end_k+d_pixel,d_pixel)):
     #print("Didcontinuité à ", i-nb_index_neg)
     # add a delta on one component
-    U0_rho_di = deepcopy(U0)
-    U0_rho_di.rho[i:i+drho_pixel] += drho
+    #U0_rho_di = deepcopy(U0)
+    #U0_rho_di.rho[i:i+d_pixel] += drho
+    U0_c_di = deepcopy(U0)
+    U0_c_di.c[i:i+d_pixel] += dc
     # compute chi for rho_i
-    chi_rho_i = chi(U0_rho_di, history_obs, index_receivers, max_obs, dt)
+    chi_rho_i = chi(U0_c_di, history_obs, index_receivers, max_obs, dt)
     # compute dX
     dX = chi_rho_i - chi_rho
     # compute dX/drho_i
-    K_i[:,it] = dX / drho
+    K_i[:,it] = dX / dc
 
     # make temporary savings
     if (it % 20) <= 1e-4 :
@@ -109,7 +118,7 @@ K_approach = K_i[1,:] + K_i[2,:]
 
 
 plt.figure()
-plt.plot(z[np.arange(start_k,end_k+1,drho_pixel)], K_approach)
+plt.plot(z[np.arange(start_k,end_k+1,d_pixel)], K_approach)
 plt.plot(z[index_source],0)
 plt.plot(z[index_receivers],0)
 plt.title("Approached kernel")

@@ -7,9 +7,14 @@ Created on Mon Jun 13 09:02:52 2022
 """
 
 import sys
-sys.path.insert(1, '../Lib/')
+import os.path
 
-from discretisation import *
+
+path_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(path_dir)
+sys.path.insert(1,"../Lib")
+
+from Lib.discretisation import *
 from linearised_navier_stokes_acoustic_adjoint_splitchi import *
 
 import numpy as np
@@ -32,7 +37,7 @@ nb_index_neg = int(- z0 / 100)
 zmax = 45e3
 
 
-################## 
+##################
 # TIME PARAMETERS
 ##################
 T_init = 0
@@ -56,7 +61,7 @@ p0    = 88714.4844      # pressure
 T0    = 294.375305      # temperature
 c     = 344.108887      # sound speed
 g     = 0               # gravity
-gamma = 1.40011787      # gamma 
+gamma = 1.40011787      # gamma
 cv    = 20.7801247      # calorific capacity
 M     = 28.965          # masse molaire de l'air https://fr.wikipedia.org/wiki/Air
 Cv    = cv/M
@@ -66,10 +71,10 @@ param_toset_onmesh = [rho0, v0, p0, T0, c, g, gamma, Cv]
 # CONSIDERATION ON MESH
 ########################
 to_check_CFL = False
-if to_check_CFL : 
+if to_check_CFL :
     min_v = abs(c) #, abs(v0))
     max_v = max(abs(c), abs(v0))
-    max_dx = min_v / (10 * 2.5 * f0) 
+    max_dx = min_v / (10 * 2.5 * f0)
 
     max_dt = max_dx / max_v
 
@@ -83,7 +88,7 @@ if to_check_CFL :
 # define the space
 h = 100      # size of the mesh
 z = np.arange(z0,zmax+h,h)
- 
+
 # define Time
 t = 0
 dt = 0.005/10
@@ -105,27 +110,27 @@ for i,param in enumerate(param_toset_onmesh):
 
 
 ###########################
-## DEFINE THE "REAL" MODEL 
+## DEFINE THE "REAL" MODEL
 ###########################
 [GT_rho0, GT_v0, GT_p0, GT_T0, GT_c, GT_g, GT_gamma, GT_Cv] = deepcopy(param_toset_onmesh)
 
-factor = 1.2
+factor = 2
 obs_start = 90 + nb_index_neg
 obs_end = 120 + nb_index_neg
 
-for param in [GT_c]: #, GT_rho0:
+for param in [GT_rho0]: #, GT_c:
     param[obs_start:obs_end] = factor * param[obs_start:obs_end]
 
 
 ########################
 # DEFINE SOURCE ON MESH
 ########################
-# set the source
+# set the source for plots
 index_source = 50+nb_index_neg
 t_ax = np.arange(T_init,Tmax+dt,dt/2)
-source = get_source(t_ax, f0) 
+source = get_source(t_ax, f0)
 factor_source = (z == z[index_source]) #np.exp(-2*dist_z/1000)
- 
+
 source = [source, factor_source]
 
 
@@ -135,7 +140,7 @@ source = [source, factor_source]
 if False:
     # plot the source in time and space
     total_source = np.zeros((len(z), len(t_ax)))
-    for t in t_ax : 
+    for t in t_ax :
         for i in range(len(z)):
             total_source[i,int(round(2*t/dt))] = source[0][int(round(2*t/dt))] * source[1][i]
 
@@ -158,15 +163,17 @@ plt.show()
 plt.close()
 
 
+
+# set source parameters
+source= [z, f0, index_source]
+
 ##########################
 # INTIALISATION OF MODELS
 ##########################
 
 # define vectors of the system
-c_demi = (c[1:] + c[:-1])/2
-GT_c_demi = (GT_c[1:] + GT_c[:-1])/2 
-U0 = LNS_Model(rho0, c_demi) 
-GT_U0 = LNS_Model(GT_rho0, GT_c_demi) 
+U0 = LNS_Model(rho0, c)
+GT_U0 = LNS_Model(GT_rho0, GT_c)
 
 # Plot the model
 U0.plot(z,"The  a priori background")
@@ -174,4 +181,4 @@ U0.plot(z,"The  a priori background")
 GT_U0.plot(z,"The ground truth background")
 
 
-U1 = LNS_Variable(np.zeros(len(z)), np.zeros(len(z)-1), np.zeros(len(z))) 
+U1 = LNS_Variable(np.zeros(len(z)), np.zeros(len(z)-1), np.zeros(len(z)))
