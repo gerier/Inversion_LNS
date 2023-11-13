@@ -205,13 +205,13 @@ use parameters, only :rank
       write(file_name,"('./OUTPUT/Krho_image',i6.6,'.pnm')") it
       write(system_command,"('convert Krho_image',i6.6,'.pnm Krho_image',i6.6,'.gif ; rm Krho_image',i6.6,'.pnm')") it,it,it 
                                                            
-    else if (field_number == 1) then
+    else if (field_number == 3) then
       write(file_name,"('./OUTPUT/Kp_image',i6.6,'.pnm')") it
       write(system_command,"('convert Kp_image',i6.6,'.pnm Kp_image',i6.6,'.gif ; rm Kp_image',i6.6,'.pnm')") it,it,it
-    else if (field_number == 2) then
+    else if (field_number == 1) then
       write(file_name,"('./OUTPUT/Kvx_image',i6.6,'.pnm')") it
       write(system_command,"('convert Kvx_image',i6.6,'.pnm Kvx_image',i6.6,'.gif ; rm Kvx_image',i6.6,'.pnm')") it,it,it 
-    else if (field_number == 3) then
+    else if (field_number == 2) then
       write(file_name,"('./OUTPUT/Kvy_image',i6.6,'.pnm')") it
       write(system_command,"('convert Kvy_image',i6.6,'.pnm Kvy_image',i6.6,'.gif ; rm Kvy_image',i6.6,'.pnm')") it,it,it
     endif

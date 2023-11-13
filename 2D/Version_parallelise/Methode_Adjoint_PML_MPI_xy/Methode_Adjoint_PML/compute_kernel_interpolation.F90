@@ -453,8 +453,8 @@ subroutine compute_kernel_iter(rho0, p0, windx, windy, rhop, pressure, vx, vy, r
   call send_receive_topbottom(rhop)
   call send_receive_topbottom(pressure)
   call send_receive_topbottom(vy)
-  call send_receive_topbottom(sumx_vay)
-  call send_receive_topbottom(sumx_vay)
+  call send_receive_topbottom(sumy_vax)
+  call send_receive_topbottom(sumy_vay)
   call send_receive_topbottom(rhoavy)
   call send_receive_topbottom(pavy)
   
