@@ -327,8 +327,8 @@ character(len=100) :: file_name
        endif
        
       ! to have a wind profil  
-      if (add_wind_profile .and. (j_global > 25 .and. j_global <= 175)) then 
-        windy_true(i,j) = exp(- ((j_global-1)*0.1d0 - 10)**2 / 5 ) * 150
+      if (add_wind_profile .and. (j_global > ymin_wind .and. j_global <= ymax_wind)) then 
+        windy_true(i,j) = exp(- ((j_global-1)*0.1d0 - mean_gauss_wind)**2 / sigma2_gauss_wind ) * max_wind_factor
       endif
       
     enddo

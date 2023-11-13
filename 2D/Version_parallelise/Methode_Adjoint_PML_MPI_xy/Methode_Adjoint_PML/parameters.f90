@@ -10,8 +10,8 @@ module parameters
   integer, parameter :: NX = 400
 
 
-  integer, parameter :: NPROC_X = 1 !! 20
-  integer, parameter :: NPROC_Y = 1 !! 20
+  integer, parameter :: NPROC_X = 2 !! 20
+  integer, parameter :: NPROC_Y = 2 !! 20
   integer, parameter :: NPROC = NPROC_X * NPROC_Y !! 20
   
   integer, parameter :: NX_LOCAL = NX / NPROC_X
@@ -67,14 +67,21 @@ module parameters
   double precision, parameter :: obstacle_factor_rho = 1.0d0
   double precision, parameter :: obstacle_factor_c2 = 1.1d0
   logical, parameter :: add_wind_profile = .true.
+  integer, parameter :: ymin_wind = 25
+  integer, parameter :: ymax_wind = 175 
+  double precision, parameter :: mean_gauss_wind = 10  ! meters/s
+  double precision, parameter :: sigma2_gauss_wind = 5 ! (meters/s)2
+  double precision, parameter :: max_wind_factor = 150 ! meters/s 
+   
+  
   
 ! receivers
   integer, parameter :: NREC = 1 !201
 !! DK DK I use 2301 here instead of 2300 in order to fall exactly on a grid point
-  double precision, parameter :: xdeb = 12500.d0   ! first receiver x in meters
-  double precision, parameter :: ydeb = 15000.d0   ! first receiver y in meters
-  double precision, parameter :: xfin = 12500.d0   ! last receiver x in meters
-  double precision, parameter :: yfin = 15000.d0   ! last receiver y in meters
+  double precision, parameter :: xdeb = 22500.d0   ! first receiver x in meters
+  double precision, parameter :: ydeb = 5000.d0   ! first receiver y in meters
+  double precision, parameter :: xfin = 22500.d0   ! last receiver x in meters
+  double precision, parameter :: yfin = 5000.d0   ! last receiver y in meters
 
 ! display information on the screen from time to time
   integer, parameter :: IT_DISPLAY = 200
