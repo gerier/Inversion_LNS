@@ -67,6 +67,9 @@ module parameters
   double precision, parameter :: obstacle_factor_rho = 1.0d0
   double precision, parameter :: obstacle_factor_c2 = 1.1d0
   logical, parameter :: add_wind_profile = .true.
+  ! wind can be modeled by a gaussian
+  ! expression if the model needs 3 parameters : the mean of the gaussian, the variance and the amplitude of the wind
+  ! we add also two parameters to cancel the wind at the extremities
   integer, parameter :: ymin_wind = 25
   integer, parameter :: ymax_wind = 175 
   double precision, parameter :: mean_gauss_wind = 10  ! meters/s
