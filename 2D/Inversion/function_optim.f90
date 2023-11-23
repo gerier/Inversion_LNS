@@ -24,19 +24,20 @@ module parameters
 
  double precision :: dfx_r
  
- double precision :: alpha_start, alpha, alpha_prec, alpha_max
+ double precision :: alpha_start, alpha, alpha_prec, alpha_low, alpha_high
  
  integer :: count_grad, count_restart, count_alpha
  double precision :: reg_weight
   
- double precision :: c1,c2 
+ double precision, parameter :: c1 = 0.0001
+ double precision, parameter :: c2 = 0.9
   
  double precision, parameter :: rate = 0.8d0
- integer, parameter :: maxiter_backtracking = 100
+ integer, parameter :: maxiter_backtracking = 20
 
  integer, parameter :: maxiter = 100
  double precision :: tol_x = 1e-10
- 
+ double precision :: alpha_max = 10
 endmodule parameters
 
 
@@ -47,8 +48,8 @@ subroutine f(x,fx)
   double precision, dimension(Nflat) :: x
   double precision :: fx
   
-  fx = x(1) - x(2) + 2*x(1)*x(2) + 2*x(1)**2 + x(2)**2
-  print *, fx
+  fx = x(1) - x(2) + 2*x(1)*x(2) + 2*x(1)**2 + x(2)**2 + 1.5d0
+
 endsubroutine f
 
 
