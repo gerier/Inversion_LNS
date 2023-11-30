@@ -17,7 +17,7 @@ subroutine optimisation() ! TODO
  call df(x,dfx) 
  
  x_old(:) = 1e6 * x(:)
- fx_old = 0
+ fx_old = 1e10
  dfx_old(:) = 0
  
  iter = 1

@@ -1,7 +1,7 @@
 
 module parameters 
 
- integer,parameter :: Nflat = 2
+ integer,parameter :: Nflat = 20
  
  double precision, dimension(Nflat) :: x0
  
@@ -48,8 +48,13 @@ subroutine f(x,fx)
   double precision, dimension(Nflat) :: x
   double precision :: fx
   
-  fx = x(1) - x(2) + 2*x(1)*x(2) + 2*x(1)**2 + x(2)**2 + 1.5d0
-
+  integer :: i 
+  ! fx = x(1) - x(2) + 2*x(1)*x(2) + 2*x(1)**2 + x(2)**2 + 1.5d0
+  fx = 0
+  do i=1,Nflat
+    fx = fx + (x(i)**4 - 16 * x(i)**2 + 5* x(i))
+  enddo 
+  fx = fx / 2
 endsubroutine f
 
 
@@ -59,10 +64,14 @@ subroutine df(x,dfx)
   implicit none
   double precision, dimension(Nflat) :: x
   double precision, dimension(Nflat) :: dfx
-  
-  dfx(1) = 1 + 2*x(2) + 4*x(1)
-  dfx(2) = - 1 + 2*x(1) + 2*x(2)
-
+  integer :: i
+  !dfx(1) = 1 + 2*x(2) + 4*x(1)
+  !dfx(2) = - 1 + 2*x(1) + 2*x(2)
+   dfx(:) = 0.d0
+  do i=1,Nflat
+    dfx(i) = 4*x(i)**3 - 32 * x(i) + 5
+  enddo 
+  dfx(:) = dfx(:) / 2
 endsubroutine df
 
 
