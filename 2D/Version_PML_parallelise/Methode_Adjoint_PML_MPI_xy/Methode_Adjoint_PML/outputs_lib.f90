@@ -403,7 +403,7 @@ use parameters, only :rank
     
      call create_color_image(pressure(0:NX_LOCAL+1,0:NY_LOCAL+1),NX_LOCAL,NY_LOCAL,&
       it,ISOURCE,JSOURCE,ix_rec,iy_rec,nrec, &
-      NPOINTS_PML,USE_PML_XMIN,USE_PML_XMAX,USE_PML_YMIN,USE_PML_YMAX,6,type_number)
+      NPOINTS_PML,USE_PML_XMIN,USE_PML_XMAX,USE_PML_YMIN,USE_PML_YMAX,3,type_number)
               
               
     if(rank == 0) then
