@@ -23,8 +23,8 @@ from copy import deepcopy
 from Lib_NavierStokesEq.filter import *
 
 
-type_parametrisation = 1
-type_gradient = 4
+type_parametrisation = 2
+type_gradient = 5
 type_regul = 0
  
 # select parametrisation
@@ -121,7 +121,9 @@ pi = 3.141592653589793238462643
 signal_source =  - 8 * pi**2 * source[1]**2 * (total_time-t0) * np.exp(-4 * pi**2 * source[1]**2 * (total_time-t0)**2)
 source_param = deepcopy(source)
 
-for factor_reg in [0.1, 0.5, 1]:#0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 
+initial_m = deepcopy(m)
+
+for factor_reg in [0.005,0.1, 0.5, 1]:#0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 
 
     # generate a directory to save results
     if not(os.path.exists("./Resultats/")):
@@ -139,10 +141,10 @@ for factor_reg in [0.1, 0.5, 1]:#0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05,
     config.n_grad = 0
     config.n_h = 0
 
-    reg = [factor_reg, h, size, deepcopy(m)]
+    reg = [factor_reg, h, size, deepcopy(initial_m)]
 
 
-    new_m = m
+    new_m = deepcopy(initial_m)
     for source_freq in source_freq_cut:
         print("Test with source frequency cutoff:", source_freq_cut)
 
@@ -169,7 +171,7 @@ for factor_reg in [0.1, 0.5, 1]:#0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05,
 
         # compute the model by the inversion
         m = deepcopy(new_m)
-        new_m, is_notfound, x_iter = optimisation(m, f0, df0, hessf0, 0.0001, 0.9, argf, argg, argh, alpha_max=1, maxiter=30,
+        new_m, is_notfound, x_iter = optimisation(m, f0, df0, hessf0, 0.0001, 0.9, argf, argg, argh, alpha_max=1, maxiter=3,
 		                                tol_x=1e-8, tol_df=1e-8, true_hessian=False, regularisation=reg, plot_iter=[plot_flatteniter, [z, parametrisation, Sc, gamma]], save_info=save_info, type_gradient=type_gradient,type_regul=type_regul)
 
 

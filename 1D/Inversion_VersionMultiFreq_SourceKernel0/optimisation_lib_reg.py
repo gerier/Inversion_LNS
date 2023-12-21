@@ -441,35 +441,28 @@ def optimisation(x0, f0, gradf0, hessf0, c1, c2, argf=[],argg=[], argh=[], alpha
         if type_regul == 0:
             def f(x,argf):
                 index_source = arg_f[10][2]
-                factor_dist_source = 1 + 10 * np.exp(- (np.arange(0,arg_f[1])- index_source)**2/2 /10)
-                factor_dist_source_demi = 1 + 10 * np.exp(- (np.arange(0,arg_f[1]-1)+0.5- index_source)**2/2 /10)
+                factor_dist_source = 1 + 50 * np.exp(- (np.arange(0,arg_f[1])- index_source)**2/2 /10)
+                factor_dist_source_demi = 1 + 50 * np.exp(- (np.arange(0,arg_f[1]-1)+0.5- index_source)**2/2 /10)
                 factor_dist_source = np.concatenate([factor_dist_source,factor_dist_source,factor_dist_source_demi])
                 return f0(x, *argf[3:]) + gamma * sum(factor_dist_source * (x-argf[2])**2) 
             
             def f2(x,argf):
                 index_source = arg_f[10][2]
-                factor_dist_source = 1 + 10 * np.exp(- (np.arange(0,arg_f[1])- index_source)**2/2 /10)
-                factor_dist_source_demi = 1 + 10 * np.exp(- (np.arange(0,arg_f[1]-1)+0.5- index_source)**2/2 /10)
+                factor_dist_source = 1 + 50 * np.exp(- (np.arange(0,arg_f[1])- index_source)**2/2 /10)
+                factor_dist_source_demi = 1 + 50 * np.exp(- (np.arange(0,arg_f[1]-1)+0.5- index_source)**2/2 /10)
                 factor_dist_source = np.concatenate([factor_dist_source,factor_dist_source,factor_dist_source_demi])
                 return [f0(x, *argf[3:]), gamma * sum(factor_dist_source * (x-argf[2])**2)]
 
             def gradf(x,argg):
                 index_source = arg_g[8][2]
-                factor_dist_source = 1 + 10 * np.exp(- (np.arange(0,arg_f[1])- index_source)**2/2 /10)
-                factor_dist_source_demi = 1 + 10 * np.exp(- (np.arange(0,arg_f[1]-1)+0.5- index_source)**2/2 /10)
+                factor_dist_source = 1 + 50 * np.exp(- (np.arange(0,arg_f[1])- index_source)**2/2 /10)
+                factor_dist_source_demi = 1 + 50 * np.exp(- (np.arange(0,arg_f[1]-1)+0.5- index_source)**2/2 /10)
 
                 grad = gradf0(x, *argg[3:])
                 
-                plt.figure()
-                plt.plot( grad[0][argg[1]:2*argg[1]]  + 2 * gamma * (x[argg[1]:2*argg[1]] - argg[2][argg[1]:2*argg[1]]))
-
                 grad[0][:argg[1]] = grad[0][:argg[1]] + 2 * gamma * (x[:argg[1]] - argg[2][:argg[1]]) * factor_dist_source
                 grad[0][argg[1]:2*argg[1]] = grad[0][argg[1]:2*argg[1]] + 2 * gamma * (x[argg[1]:2*argg[1]] - argg[2][argg[1]:2*argg[1]]) * factor_dist_source
                 grad[0][2*argg[1]:] = grad[0][2*argg[1]:] + 2 * gamma * (x[2*argg[1]:] - argg[2][2*argg[1]:]) * factor_dist_source_demi
-
-                #plt.plot(factor_dist_source)
-                plt.plot(grad[0][argg[1]:2*argg[1]] )
-                plt.show()
 
                 return grad
             
@@ -553,6 +546,7 @@ def optimisation(x0, f0, gradf0, hessf0, c1, c2, argf=[],argg=[], argh=[], alpha
                 i_restart += 1 
                 r = - dfx
                 h_old = None
+                is_restarted= 1
                 cond_dfx = r
             else :
                 r, h_old, cond_dfx = get_direction_descent(type_gradient, x, fx,dfx,x_old,fx_old,dfx_old,cond_dfx_old,r_old, iter, h_old=h_old, true_hessian=true_hessian)
@@ -563,6 +557,8 @@ def optimisation(x0, f0, gradf0, hessf0, c1, c2, argf=[],argg=[], argh=[], alpha
               r = -dfx
               h_old = None
               cond_dfx = r
+              i_restart += 1 
+              is_restarted= 1
 
             dfx_r = sum(dfx * r)
 
@@ -571,7 +567,7 @@ def optimisation(x0, f0, gradf0, hessf0, c1, c2, argf=[],argg=[], argh=[], alpha
                 alpha_start = 1
          
             file2 = open(path+"/debug_info.txt","a")
-            file2.write("%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e"%(npl.norm(x-x_old), npl.norm(dfx-dfx_old), fx, fx_old, alpha_start, sum((dfx-dfx_old)*r_old), sum(r_old*r_old), sum((dfx-dfx_old)*(dfx-dfx_old))))
+            file2.write("%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %1d"%(npl.norm(x-x_old), npl.norm(dfx-dfx_old), fx, fx_old, alpha_start, sum((dfx-dfx_old)*r_old), sum(r_old*r_old), sum((dfx-dfx_old)*(dfx-dfx_old)),is_restarted))
             file2.close()
 
 
@@ -593,6 +589,8 @@ def optimisation(x0, f0, gradf0, hessf0, c1, c2, argf=[],argg=[], argh=[], alpha
         x_iter += [x]
         fx = fx_new
         dfx = dfx_new
+
+        is_restarted = 0
 
         print("Current iter:", iter)
         if (fx - fx_old) > 0 :

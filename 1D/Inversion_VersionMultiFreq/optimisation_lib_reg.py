@@ -527,6 +527,7 @@ def optimisation(x0, f0, gradf0, hessf0, c1, c2, argf=[],argg=[], argh=[], alpha
             if (( sum((dfx-dfx_old)*r_old) < 1e-8 and type_gradient in [4,5,6]) or npl.norm(dfx-dfx_old) < 1e-15) :
                 # restarts
                 i_restart += 1 
+                is_restarted = 1
                 r = - dfx
                 h_old = None
                 cond_dfx = r
@@ -539,6 +540,8 @@ def optimisation(x0, f0, gradf0, hessf0, c1, c2, argf=[],argg=[], argh=[], alpha
               r = -dfx
               h_old = None
               cond_dfx = r
+              i_restart += 1 
+              is_restarted = 1
 
             dfx_r = sum(dfx * r)
 
@@ -547,7 +550,7 @@ def optimisation(x0, f0, gradf0, hessf0, c1, c2, argf=[],argg=[], argh=[], alpha
                 alpha_start = 1
          
             file2 = open(path+"/debug_info.txt","a")
-            file2.write("%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e"%(npl.norm(x-x_old), npl.norm(dfx-dfx_old), fx, fx_old, alpha_start, sum((dfx-dfx_old)*r_old), sum(r_old*r_old), sum((dfx-dfx_old)*(dfx-dfx_old))))
+            file2.write("%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %1d"%(npl.norm(x-x_old), npl.norm(dfx-dfx_old), fx, fx_old, alpha_start, sum((dfx-dfx_old)*r_old), sum(r_old*r_old), sum((dfx-dfx_old)*(dfx-dfx_old)), is_restarted))
             file2.close()
 
 
@@ -569,6 +572,8 @@ def optimisation(x0, f0, gradf0, hessf0, c1, c2, argf=[],argg=[], argh=[], alpha
         x_iter += [x]
         fx = fx_new
         dfx = dfx_new
+
+        is_restarted = 0
 
         print("Current iter:", iter)
         if (fx - fx_old) > 0 :
