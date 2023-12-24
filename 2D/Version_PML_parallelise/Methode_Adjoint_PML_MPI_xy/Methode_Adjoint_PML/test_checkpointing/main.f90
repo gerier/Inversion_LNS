@@ -112,75 +112,73 @@ integer :: it, it_time, time_last_frame
 !!             Retrieve the observations                !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
   ! INITIALISATION
-
-
- if (method == 1) then
- 
-   call reset_forward()
-   save_sismos = .True.
-   call forwardproblem(p0_true, rho0_true, windx_true, windy_true, kappa_unrelaxed_true,  1, NSTEP, 2) 
-
-
- else if (method == 2) then
- 
-   ! get an observation (for now, you can only create observations)
-   call reset_forward()
-   save_sismos = .True.
-   call forwardproblem(p0_true, rho0_true, windx_true, windy_true, kappa_unrelaxed_true,  1, NSTEP, 2) 
-
-   ! get informations from observations
-   sispressure_true(:,:) = sispressure(:,:) 
-   norm_pressure_true = maxval(abs(sispressure_true))**2
-   call MPI_ALLREDUCE(maxval(abs(sispressure_true))**2, &
-        norm_pressure_true,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,code)
- 
-   ! compute kernel
-   call compute_kernel()
-   
-  else 
-     ! inverse problem 
-     print *, "ERROR: Inverse problem not yet implemented"
-     stop 
- endif
-
-
-!    call reset_forward()
+!  call reset_forward()
 !  save_sismos = .True.
+     
+!  call forwardproblem(p0_true, rho0_true, windx_true, windy_true, kappa_unrelaxed_true,  1, NSTEP, 1) 
+!  !call forwardproblem(p0_prior, rho0_prior, windx_prior, windy_prior, kappa_unrelaxed_prior,  1, NSTEP, 3) 
+!  sispressure_true(:,:) = sispressure(:,:)
+  
+!  norm_pressure_true = maxval(abs(sispressure_true))**2
+!      call MPI_ALLREDUCE(maxval(abs(sispressure_true))**2, &
+!        norm_pressure_true,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,code)
+
+        
+!  print *, "je suis vraiment sorti, j'ai fini", rank
+  
+ 
+!    write(file_name, "('./OUTPUT/p_true_',i6.6,'.txt')") rank
+!    OPEN(UNIT=12, FILE=file_name, ACTION="write")
+!    DO ii=1,NX_LOCAL
+!      WRITE(12,*) (pressure(ii,jj), jj=1,NY_LOCAL)
+!    END DO
+!    CLOSE(12)
+
+    call reset_forward()
+  save_sismos = .True.
   
   !call forwardproblem(p0_true, rho0_true, windx_true, windy_true, kappa_unrelaxed_true,  1, NSTEP, 2) 
- ! call forwardproblem(p0_prior, rho0_prior,windx_prior,windy_prior,kappa_unrelaxed_prior,  1, NSTEP, 2) 
- ! sispressure_true(:,:) = sispressure(:,:)
- ! norm_pressure_true = maxval(abs(sispressure_true))**2
+  call forwardproblem(p0_prior, rho0_prior,windx_prior,windy_prior,kappa_unrelaxed_prior,  1, NSTEP, 2) 
+  sispressure_true(:,:) = sispressure(:,:)
+  norm_pressure_true = maxval(abs(sispressure_true))**2
   
- ! call reset_kernel()
- ! save_sismos = .False.
+  call reset_kernel()
+  save_sismos = .False.
   
- ! call save_frames()
- !  do it=0,NSTEP
+  call save_frames()
+   do it=0,NSTEP
    
- !  if (NSTEP-it == NSTEP-1 .or. modulo(NSTEP-it,NSTEP/NFRAMES) == NSTEP/NFRAMES-1 ) then
+   if (NSTEP-it == NSTEP-1 .or. modulo(NSTEP-it,NSTEP/NFRAMES) == NSTEP/NFRAMES-1 ) then
       !print *, 1,it, NSTEP-it
- !     call save_local_frames(NSTEP-it)
- !  else if (NSTEP-it /= NSTEP) then
+      call save_local_frames(NSTEP-it)
+   else if (NSTEP-it /= NSTEP) then
      
- !    call load_frame(NSTEP-it, time_last_frame)
- !    !print *, 2,it, NSTEP-it, time_last_frame
- !    call forwardproblem(p0_prior,rho0_prior,windx_prior,windy_prior,kappa_unrelaxed_prior,time_last_frame, NSTEP-it,2)
+     call load_frame(NSTEP-it, time_last_frame)
+     !print *, 2,it, NSTEP-it, time_last_frame
+     call forwardproblem(p0_prior,rho0_prior,windx_prior,windy_prior,kappa_unrelaxed_prior,time_last_frame, NSTEP-it,2)
 
-  ! else
+   else
      !print *, 3, it, NSTEP-it
- !  endif
+   endif
 
- !   if (i_rank == ix_rec(1)/NX_LOCAL .and. j_rank == iy_rec(1)/NY_LOCAL) then
- !  OPEN(UNIT=1222, FILE="./OUTPUT/p_checkpoint.txt", position="append", ACTION="write")
- !  WRITE(1222,*) it, pressure(ix_rec(1)-offset_i,iy_rec(1)-offset_j)
- !  !print *, pressure(ix_rec(1),ix_rec(1)), ix_rec(1),ix_rec(1)
- !  CLOSE(1222)
- !  endif
+    if (i_rank == ix_rec(1)/NX_LOCAL .and. j_rank == iy_rec(1)/NY_LOCAL) then
+   OPEN(UNIT=1222, FILE="./OUTPUT/p_checkpoint.txt", position="append", ACTION="write")
+   WRITE(1222,*) it, pressure(ix_rec(1)-offset_i,iy_rec(1)-offset_j)
+   !print *, pressure(ix_rec(1),ix_rec(1)), ix_rec(1),ix_rec(1)
+   CLOSE(1222)
+   endif
     
- !  enddo
+   enddo
   
 
+    
+    
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                  Compute gradient                    !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
+!  call compute_kernel()
+    
+    
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!                          End                         !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  

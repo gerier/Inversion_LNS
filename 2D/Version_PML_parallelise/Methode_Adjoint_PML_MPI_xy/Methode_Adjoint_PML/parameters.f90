@@ -86,6 +86,10 @@ module parameters
   double precision, parameter :: xfin = 22500.d0   ! last receiver x in meters
   double precision, parameter :: yfin = 5000.d0   ! last receiver y in meters
 
+! method
+! 1: forward, 2: kernel, 3: inversion
+ integer, parameter :: method = 2
+ 
 ! display information on the screen from time to time
   integer, parameter :: IT_DISPLAY = 200
 
@@ -141,8 +145,10 @@ module parameters
 
   ! checkpointing
   integer, parameter :: NFRAMES = 50
+  integer, parameter :: N_LOC_FRAMES = 4
   double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2,1:4,1:NFRAMES) :: FRAMES
-  
+  double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2,1:4,1:N_LOC_FRAMES) :: LOC_FRAMES
+
   ! PML parameters
   ! flags to add PML layers to the edges of the grid
   logical, parameter :: USE_PML_XMIN = .true.
@@ -227,6 +233,26 @@ module parameters
       eq3_memory_dwindy_dy_fw_fr, eq3_memory_dwindy_dx_fw_fr,      &
       eq3_memory_dwindx_dx_fw_fr
 
+      double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2,N_LOC_FRAMES) ::                &
+  ! for equation on rhop and pressure
+      eq1_memory_dp0_dx_fw_loc_fr, eq1_memory_dp0_dy_fw_loc_fr,            &
+      eq1_memory_drho0_dx_fw_loc_fr, eq1_memory_drho0_dy_fw_loc_fr,        &
+      eq1_memory_dpressure_dx_fw_loc_fr, eq1_memory_dpressure_dy_fw_loc_fr,&
+      eq1_memory_drhop_dx_fw_loc_fr, eq1_memory_drhop_dy_fw_loc_fr,        &
+      eq1_memory_dvx_dx_fw_loc_fr, eq1_memory_dvy_dy_fw_loc_fr,            &
+      eq1_memory_dwindx_dx_fw_loc_fr, eq1_memory_dwindy_dy_fw_loc_fr,      &
+  ! for equation on vx
+      eq2_memory_dpressure_dx_fw_loc_fr,                                   &
+      eq2_memory_drho0_dx_fw_loc_fr, eq2_memory_drho0_dy_fw_loc_fr,        &
+      eq2_memory_dvx_dx_fw_loc_fr, eq2_memory_dvx_dy_fw_loc_fr,            &
+      eq2_memory_dwindx_dx_fw_loc_fr, eq2_memory_dwindx_dy_fw_loc_fr,      &
+      eq2_memory_dwindy_dy_fw_loc_fr,                                      &
+  ! for equation on vy
+      eq3_memory_dpressure_dy_fw_loc_fr,                                   &
+      eq3_memory_drho0_dy_fw_loc_fr, eq3_memory_drho0_dx_fw_loc_fr,        &
+      eq3_memory_dvy_dy_fw_loc_fr, eq3_memory_dvy_dx_fw_loc_fr,            &
+      eq3_memory_dwindy_dy_fw_loc_fr, eq3_memory_dwindy_dx_fw_loc_fr,      &
+      eq3_memory_dwindx_dx_fw_loc_fr
 
  ! MPI variables
  ! array needed for MPI_RECV

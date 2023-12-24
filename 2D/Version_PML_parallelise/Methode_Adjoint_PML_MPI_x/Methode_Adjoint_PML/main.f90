@@ -9,7 +9,7 @@ program main
  integer i,j,irec, ii, jj
  double precision :: Courant_number
  
-
+  integer :: it, it_time, time_last_frame
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!                      MPI Init                           !!
@@ -269,7 +269,8 @@ program main
   call reset_forward()
   save_sismos = .True.
   
-  call forwardproblem(p0_true, rho0_true, windx_true, windy_true, kappa_unrelaxed_true,  1, NSTEP, 3) 
+  !call forwardproblem(p0_true, rho0_true, windx_true, windy_true, kappa_unrelaxed_true,  1, NSTEP, 3) 
+  call forwardproblem(p0_prior, rho0_prior,windx_prior,windy_prior,kappa_unrelaxed_prior,  1, NSTEP, 3) 
   sispressure_true(:,:) = sispressure(:,:)
   norm_pressure_true = maxval(abs(sispressure_true))**2
   
@@ -284,10 +285,36 @@ program main
   call mpi_barrier(mpi_comm_world,code)
   enddo
 
-  
 
-   
+  call reset_kernel()
+  save_sismos = .False.
   
+  call save_frames()
+   do it=0,NSTEP
+   
+   if (NSTEP-it == NSTEP-1 .or. modulo(NSTEP-it,NSTEP/NFRAMES) == NSTEP/NFRAMES-1 ) then
+      print *, 1,it, NSTEP-it
+      call save_local_frames(NSTEP-it)
+   else if (NSTEP-it /= NSTEP) then
+     
+     call load_frame(NSTEP-it, time_last_frame)
+     print *, 2,it, NSTEP-it, time_last_frame
+     call forwardproblem(p0_prior,rho0_prior,windx_prior,windy_prior,kappa_unrelaxed_prior,time_last_frame, NSTEP-it,3)
+
+   else
+     print *, 3, it, NSTEP-it
+   endif
+
+    if (rank == 0) then
+   OPEN(UNIT=1222, FILE="./OUTPUT/p_checkpoint.txt", position="append", ACTION="write")
+   WRITE(1222,*) it, pressure(ix_rec(1) - offset_i,iy_rec(1))
+   !print *, pressure(ix_rec(1),ix_rec(1)), ix_rec(1),ix_rec(1)
+   CLOSE(1222)
+   endif
+    
+   enddo
+  
+   
   ! close MPI program
   call MPI_FINALIZE(code)
     

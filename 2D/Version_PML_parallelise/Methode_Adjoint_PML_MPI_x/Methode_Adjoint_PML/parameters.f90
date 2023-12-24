@@ -127,7 +127,9 @@ module parameters
 
   ! checkpointing
   integer, parameter :: NFRAMES = 50
+  integer, parameter :: N_LOC_FRAMES = 4
   double precision, dimension(-1:NX_LOCAL+2,0:NY+1,1:4,1:NFRAMES) :: FRAMES
+  double precision, dimension(-1:NX_LOCAL+2,0:NY+1,1:4,1:N_LOC_FRAMES) :: LOC_FRAMES
   
   ! PML parameters
   ! flags to add PML layers to the edges of the grid
@@ -213,6 +215,26 @@ module parameters
       eq3_memory_dwindy_dy_fw_fr, eq3_memory_dwindy_dx_fw_fr,      &
       eq3_memory_dwindx_dx_fw_fr
 
+      double precision, dimension(-1:NX_LOCAL+2,0:NY+1,N_LOC_FRAMES) ::                &
+  ! for equation on rhop and pressure
+      eq1_memory_dp0_dx_fw_loc_fr, eq1_memory_dp0_dy_fw_loc_fr,            &
+      eq1_memory_drho0_dx_fw_loc_fr, eq1_memory_drho0_dy_fw_loc_fr,        &
+      eq1_memory_dpressure_dx_fw_loc_fr, eq1_memory_dpressure_dy_fw_loc_fr,&
+      eq1_memory_drhop_dx_fw_loc_fr, eq1_memory_drhop_dy_fw_loc_fr,        &
+      eq1_memory_dvx_dx_fw_loc_fr, eq1_memory_dvy_dy_fw_loc_fr,            &
+      eq1_memory_dwindx_dx_fw_loc_fr, eq1_memory_dwindy_dy_fw_loc_fr,      &
+  ! for equation on vx
+      eq2_memory_dpressure_dx_fw_loc_fr,                                   &
+      eq2_memory_drho0_dx_fw_loc_fr, eq2_memory_drho0_dy_fw_loc_fr,        &
+      eq2_memory_dvx_dx_fw_loc_fr, eq2_memory_dvx_dy_fw_loc_fr,            &
+      eq2_memory_dwindx_dx_fw_loc_fr, eq2_memory_dwindx_dy_fw_loc_fr,      &
+      eq2_memory_dwindy_dy_fw_loc_fr,                                      &
+  ! for equation on vy
+      eq3_memory_dpressure_dy_fw_loc_fr,                                   &
+      eq3_memory_drho0_dy_fw_loc_fr, eq3_memory_drho0_dx_fw_loc_fr,        &
+      eq3_memory_dvy_dy_fw_loc_fr, eq3_memory_dvy_dx_fw_loc_fr,            &
+      eq3_memory_dwindy_dy_fw_loc_fr, eq3_memory_dwindy_dx_fw_loc_fr,      &
+      eq3_memory_dwindx_dx_fw_loc_fr
 
  ! MPI variables
  ! array needed for MPI_RECV
