@@ -18,6 +18,24 @@ subroutine compute_kernel()
  character(len=100) :: file_name
 
   ! INITIALISATION
+
+
+  ! init info about time of computation
+  if (rank == 0) then
+    print *, "[ Start computating kernel ]"
+  endif
+  call date_and_time(datein,timein,zone,time_values)
+! time_values(3): day of the month
+! time_values(5): hour of the day
+! time_values(6): minutes of the hour
+! time_values(7): seconds of the minute
+! time_values(8): milliseconds of the second
+! this fails if we cross the end of the month
+  time_start = 86400.d0*time_values(3) + 3600.d0*time_values(5) + &
+               60.d0*time_values(6) + time_values(7) + time_values(8) / 1000.d0
+  
+  
+  
   call reset_kernel()
  
   ! To have an exact backward wavefiled, we use checKpointing
@@ -86,6 +104,32 @@ subroutine compute_kernel()
     call compute_kernel_iter(rho0_prior, p0_prior, windx_prior, windy_prior, rhop_half_t, p_half_t, vx, vy,&
              rhoa_half_t, pa_half_t, vax, vay, value_dvx_dt, value_dvy_dt, it)
 
+    ! write information on the pogress in the kernel computation
+    if ((rank == 0) .and. (mod(it,IT_DISPLAY) == 0 .or. it == 5)) then
+      call date_and_time(datein,timein,zone,time_values)
+        ! time_values(3): day of the month
+        ! time_values(5): hour of the day
+        ! time_values(6): minutes of the hour
+        ! time_values(7): seconds of the minute
+        ! time_values(8): milliseconds of the second
+        ! this fails if we cross the end of the month
+      time_end = 86400.d0*time_values(3) + 3600.d0*time_values(5) + &
+               60.d0*time_values(6) + time_values(7) + time_values(8) / 1000.d0
+       ! elapsed time since beginning of the simulation
+      tCPU = time_end - time_start
+      int_tCPU = int(tCPU)
+      ihours = int_tCPU / 3600
+      iminutes = (int_tCPU - 3600*ihours) / 60
+      iseconds = int_tCPU - 3600*ihours - 60*iminutes
+    
+      print *,'Time step # ',it,' out of ',NSTEP
+      print *,'Time: ',sngl((it-1)*DELTAT),' seconds'
+      print *, 'Elapsed time in seconds = ',tCPU
+      write(*,"(' Elapsed time in hh:mm:ss = ',i4,' h ',i2.2,' m ',i2.2,' s')") ihours,iminutes,iseconds
+      print *,'Mean elapsed time per time step in seconds = ',tCPU/dble(it)
+      print *
+    endif
+    
   enddo
 
  i_start = 1
