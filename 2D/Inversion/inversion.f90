@@ -50,6 +50,7 @@ subroutine optimisation() ! TODO
     dfx_r = dot_product(dfx, r)
     
     ! initialise a first step
+    ! Nocedal, 2006, eq. 3.60
     alpha_start = min(1.0d0, 1.01d0 * 2.d0 * (fx - fx_old) / dfx_r)
     if (alpha_start < 0) then
       print *, "Alpha start < 0 :  we have accepted to increase the mistfit in the previous iteration"
@@ -82,6 +83,7 @@ endsubroutine optimisation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine conjugateGradient(conj_number)
+  ! Dener A. et al., 2019
   use parameters, only : dfx, dfx_old, r, r_old,x,x_old,Nflat
   implicit none
   double precision :: beta,eta,gama,tau
@@ -126,7 +128,7 @@ endsubroutine conjugateGradient
 
 
 subroutine line_search() 
-
+ ! algorithm 3.5 p60, Nocedal, 2006
  use parameters, only : alpha_max, x,r, fx, dfx_r,c1,c2, alpha, alpha_low, alpha_high, alpha_start,&
                         x_new, fx_new, dfx_new
  implicit none
@@ -225,7 +227,8 @@ double precision, dimension(maxiter_backtracking,2) :: alpha_hist
  
 endsubroutine bestAlpha
 
-subroutine backtracking() 
+subroutine backtracking()
+! algorithm 3.1 p37 from Nocedal, 2006
 use parameters, only : alpha, Nflat,fx,fx_new,rate,maxiter_backtracking,x,r,x_new,fx_new,dfx_new,alpha_start,dfx_r
 implicit none
  logical :: sufficientdecrease = .False.
@@ -279,7 +282,7 @@ endsubroutine backtracking
 
 
 subroutine zoom()
-
+ ! algorithm 3.6 p61 from Nocedal, 2006
  use parameters, only : c1, c2, Nflat, alpha, alpha_low, alpha_high,maxiter_backtracking,&
                        x, fx, dfx_r, r,x_new,fx_new,dfx_new
  implicit none
