@@ -22,7 +22,7 @@ subroutine optimisation() ! TODO
  double precision :: dfxdfx_old_r_old
  
  count_grad = 0
- count_alpha = 0
+ count_f = 0
  count_restart = 0
  
  ! initialisation 
@@ -38,8 +38,11 @@ subroutine optimisation() ! TODO
  notFound = .False.
  
  do while (iter < maxiter .and. (abs(fx-fx_old)>1e-14) )
-  print *, "[Iteration ", iter, "]"
  
+  if (rank == 0) then
+    print *, "[Iteration ", iter, "]"
+  endif
+  
   if (iter <= 2) then  ! compute the steepest descent gradient
 
     r(:) = - dfx(:)
@@ -82,8 +85,6 @@ subroutine optimisation() ! TODO
   endif
  
   ! update iterates
-  iter = iter + 1 
-  
   x_old(:) = x(:)
   fx_old = fx
   dfx_old = dfx(:)
@@ -93,6 +94,9 @@ subroutine optimisation() ! TODO
   fx = fx_new 
   dfx(:) = dfx_new(:)
  
+  call save_info_inversion(iter)
+  iter = iter + 1  
+  
  enddo
  
 endsubroutine optimisation
@@ -297,7 +301,7 @@ implicit none
     iter = 1
  
     do while ((.not. sufficientdecrease) .and. (iter < maxiter_backtracking)) 
-        print *, "dans backtracking, iter : ", iter, " alpha = ", alpha, ", fx_new = ", fx_new
+        
         ! update
         call update(x, alpha, r, x_new)
         call f(x_new, fx_new)

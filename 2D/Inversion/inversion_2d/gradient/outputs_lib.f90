@@ -442,5 +442,96 @@ use parameters, only :rank
   endif
   end subroutine gather_and_generate_image
   
-  
+ 
+subroutine save_info_inversion(it)
+
+ use parameters
+ implicit none
+ integer :: it,ii,jj
+ double precision :: dfx_dfx,dfx_dfx_local
+ character(len=100) :: file_name
+
+ ! init path
+ if (it == 1 .and. rank == 0) then
+   call execute_command_line ('mkdir '//'OUTPUT_INVERSION/')
+   OPEN(UNIT=1222, FILE="./OUTPUT_INVERSION/iterations.txt", position="append", ACTION="write")
+   WRITE(1222,*) "     It, Misfit, Norm(D_Misfit), alpha, count f, count grad, count restart"
+   CLOSE(1222)
+ endif
+ 
+  ! save information
+  dfx_dfx_local = dot_product(dfx,dfx)
+  call MPI_BARRIER(MPI_COMM_WORLD, code)
+  call MPI_ALLREDUCE(dfx_dfx_local, dfx_dfx, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
+
+ if (rank == 0) then 
+  OPEN(UNIT=1222, FILE="./OUTPUT_INVERSION/iterations.txt", position="append", ACTION="write")
+  WRITE(1222,*) it, fx, sqrt(dfx_dfx), alpha, count_f, count_grad, count_restart
+  CLOSE(1222)
+ endif
+ 
+ ! save solution and gradient in the form of an image
+ !call gather_and_generate_image(K_windx,K_windy,K_p0,K_rho0,it,3)
+ !call gather_and_generate_image(windx_prior,windy_prior,p0_prior,rho0_prior,it,1)
+ 
+ ! save solution and gradient in the form of a file
+
+    write(file_name, "('./OUTPUT_INVERSION/Kwindx_',i6.6,'_',i6.6,'.txt')") it,rank
+    OPEN(UNIT=12, FILE=file_name, ACTION="write")
+    DO ii=1,NX_LOCAL
+      WRITE(12,*) (K_windx(ii,jj), jj=1,NY_LOCAL)
+    END DO
+    CLOSE(12)
+ 
+    write(file_name, "('./OUTPUT_INVERSION/Kwindy_',i6.6,'_',i6.6,'.txt')") it,rank
+    OPEN(UNIT=12, FILE=file_name, ACTION="write")
+    DO ii=1,NX_LOCAL
+      WRITE(12,*) (K_windy(ii,jj), jj=1,NY_LOCAL)
+    END DO
+    CLOSE(12)
+    
+     write(file_name, "('./OUTPUT_INVERSION/Kp0_',i6.6,'_',i6.6,'.txt')") it,rank
+    OPEN(UNIT=12, FILE=file_name, ACTION="write")
+    DO ii=1,NX_LOCAL
+      WRITE(12,*) (K_p0(ii,jj), jj=1,NY_LOCAL)
+    END DO
+    CLOSE(12)
+ 
+    write(file_name, "('./OUTPUT_INVERSION/Krho0_',i6.6,'_',i6.6,'.txt')") it,rank
+    OPEN(UNIT=12, FILE=file_name, ACTION="write")
+    DO ii=1,NX_LOCAL
+      WRITE(12,*) (K_rho0(ii,jj), jj=1,NY_LOCAL)
+    END DO
+    CLOSE(12)
+    
+    write(file_name, "('./OUTPUT_INVERSION/windx_',i6.6,'_',i6.6,'.txt')") it,rank
+    OPEN(UNIT=12, FILE=file_name, ACTION="write")
+    DO ii=1,NX_LOCAL
+      WRITE(12,*) (windx_prior(ii,jj), jj=1,NY_LOCAL)
+    END DO
+    CLOSE(12)
+ 
+    write(file_name, "('./OUTPUT_INVERSION/windy_',i6.6,'_',i6.6,'.txt')") it,rank
+    OPEN(UNIT=12, FILE=file_name, ACTION="write")
+    DO ii=1,NX_LOCAL
+      WRITE(12,*) (windy_prior(ii,jj), jj=1,NY_LOCAL)
+    END DO
+    CLOSE(12)
+    
+     write(file_name, "('./OUTPUT_INVERSION/p0_',i6.6,'_',i6.6,'.txt')") it,rank
+    OPEN(UNIT=12, FILE=file_name, ACTION="write")
+    DO ii=1,NX_LOCAL
+      WRITE(12,*) (p0_prior(ii,jj), jj=1,NY_LOCAL)
+    END DO
+    CLOSE(12)
+ 
+    write(file_name, "('./OUTPUT_INVERSION/rho0_',i6.6,'_',i6.6,'.txt')") it,rank
+    OPEN(UNIT=12, FILE=file_name, ACTION="write")
+    DO ii=1,NX_LOCAL
+      WRITE(12,*) (rho0_prior(ii,jj), jj=1,NY_LOCAL)
+    END DO
+    CLOSE(12)
+       
+
+endsubroutine save_info_inversion
 

@@ -19,6 +19,8 @@ implicit none
 
  fm = DELTAT * fm / (2 * norm_pressure_true)
 
+ count_f = count_f + 1
+
 endsubroutine f
 
 
@@ -33,6 +35,8 @@ double precision, dimension(Nflat) :: m,flat_grad
   call flatmodel2priormodel(m)
   call compute_kernel()
   call kernelparam2inversionparam(flat_grad)
+  
+  count_grad = count_grad + 1
 endsubroutine df
 
 
@@ -187,7 +191,7 @@ subroutine priormodel2flatmodel(flat_model)
 use parameters
 implicit none
 double precision, dimension(Nflat) :: flat_model
-print *, "1#################################### Rank ", rank
+
   if (parametrisation == 1) then
   ! density, wind, velocity
   flat_model(:prod_NXNY_LOCAL) = reshape(rho0_prior(1:NX_LOCAL,1:NY_LOCAL) / scale_model(1),[prod_NXNY_LOCAL])
@@ -217,6 +221,6 @@ print *, "1#################################### Rank ", rank
     stop 
     
   endif
-  print *, "2#################################### Rank ", rank
+
 endsubroutine priormodel2flatmodel
 

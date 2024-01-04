@@ -68,6 +68,19 @@ module parameters
   double precision, parameter :: obstacle_factor_rho = 1.0d0
   double precision, parameter :: obstacle_factor_c2 = 1.1d0
   logical, parameter :: add_wind_profile = .true.
+  
+  character(len=100) :: input_rho0_prior
+  character(len=100) :: input_c0_prior
+  character(len=100) :: input_windx_prior
+  character(len=100) :: input_windy_prior
+  
+  integer, parameter :: NPERTURB_MODEL = 2
+  double precision, dimension(NPERTURB_MODEL,7), parameter :: ADD_PERTURB_MODEL_INFO = transpose(reshape( &
+                 (/ 1.d0, 12000.d0, 2000.d0, 15000.d0, 3000.d0,1.2d0,1.1d0, &
+                    2.d0,  5000.d0,  5000.d0,  1500.d0,    0.0d0,1.3d0,1.1d0/), (/7,NPERTURB_MODEL/))) 
+                 
+  
+
   ! wind can be modeled by a gaussian
   ! expression if the model needs 3 parameters : the mean of the gaussian, the variance and the amplitude of the wind
   ! we add also two parameters to cancel the wind at the extremities
@@ -80,19 +93,30 @@ module parameters
   
   
 ! receivers
-  integer, parameter :: NREC = 1 !201
+!  integer, parameter :: NREC = 1 !201
+
 !! DK DK I use 2301 here instead of 2300 in order to fall exactly on a grid point
-  double precision, parameter :: xdeb = 2500.d0   ! first receiver x in meters
-  double precision, parameter :: ydeb = 5000.d0   ! first receiver y in meters
-  double precision, parameter :: xfin = 2500.d0   ! last receiver x in meters
-  double precision, parameter :: yfin = 5000.d0   ! last receiver y in meters
+!  double precision, parameter :: xdeb = 2500.d0   ! first receiver x in meters
+!  double precision, parameter :: ydeb = 5000.d0   ! first receiver y in meters
+!  double precision, parameter :: xfin = 2500.d0   ! last receiver x in meters
+!  double precision, parameter :: yfin = 5000.d0   ! last receiver y in meters
+
+
+ integer, parameter :: NREC_SET = 4
+ integer, dimension(NREC_SET), parameter :: NREC_PER_SET = (/9,9,9,9/) 
+ double precision, dimension(NREC_SET,4), parameter :: REC_SET_INFO = transpose(reshape( &
+                  (/ 2000,1000,2000,9000, &
+                     4000,1000,4000,9000, &
+                     6000,1000,6000,9000, &
+                     8000,1000,8000,9000/), (/4,NREC_SET/)))
+ integer, parameter :: NREC = sum(NREC_PER_SET)
 
 ! method
 ! 1: forward, 2: kernel, 3: inversion
- integer, parameter :: method = 3
+ integer, parameter :: method = 2
  
 ! display information on the screen from time to time
-  integer, parameter :: IT_DISPLAY = 200
+  integer, parameter :: IT_DISPLAY = NSTEP !200
 
 ! compute some constants once and for all for the fourth-order spatial scheme
 ! These coefficients are given for instance by Levander, Geophysics, vol. 53(11), p. 1436, equation (A-2)
@@ -292,7 +316,7 @@ module parameters
  
  double precision :: alpha_start, alpha, alpha_prec, alpha_low, alpha_high
  
- integer :: count_grad, count_restart, count_alpha
+ integer :: count_grad, count_restart, count_f
  double precision :: reg_weight
   
  double precision, parameter :: c1 = 0.0001
