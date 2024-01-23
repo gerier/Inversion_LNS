@@ -65,6 +65,8 @@ integer :: i_min,i_max,j_min,j_max
     enddo
   enddo
 
+  call MPI_BARRIER(MPI_COMM_WORLD, code)
+
   call send_receive_rightleft(windx_true)
   call send_receive_rightleft(windy_true)
   call send_receive_rightleft(rho0_true)
@@ -96,6 +98,8 @@ integer :: i_min,i_max,j_min,j_max
         windy_prior(i,j)           = 0
     enddo
   enddo
+
+  call MPI_BARRIER(MPI_COMM_WORLD, code)
 
   call send_receive_rightleft(windx_prior)
   call send_receive_rightleft(windy_prior)

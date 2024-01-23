@@ -149,6 +149,11 @@ integer :: it, it_time, time_last_frame
      sispressure_true(:,:) = sispressure(:,:) 
      ! norm_pressure_true = maxval(abs(sispressure_true))**2
      call MPI_ALLREDUCE(sum(sispressure_true(:,:)**2), norm_pressure_true, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
+     do irec=1,NREC
+       norm_pressure_true_per_rec(irec) = sum(sispressure_true(:,irec)**2)
+     enddo
+
+
        
      call priormodel2flatmodel(x0)
      call optimisation(x0,100,1e-8)

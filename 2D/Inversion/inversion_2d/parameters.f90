@@ -6,8 +6,8 @@ module parameters
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! total number of grid points in each direction of the grid
-  integer, parameter :: NY = 100
-  integer, parameter :: NX = 200
+  integer, parameter :: NY = 200
+  integer, parameter :: NX = 400
 
   integer, parameter :: NPROC_X = 2 !! 20
   integer, parameter :: NPROC_Y = 2 !! 20
@@ -47,15 +47,23 @@ module parameters
   double precision, parameter :: f0 = 0.1d0
   double precision, parameter :: t0 = 1.20d0 / f0
   double precision, parameter :: factor = 1.d0
+  double precision, parameter :: PI = 3.141592653589793238462643d0
+  double precision, parameter :: a = pi*pi*f0*f0
 
 ! source (in pressure, thus at a gridpoint rather than half a grid cell away)
-  double precision, parameter :: xsource = 4000.d0
-  double precision, parameter :: ysource = 5000.d0
+  integer, parameter :: type_source = 1 ! 1. Plane wave, 2. Point source, 3. POint source with SPREAD_SSF
+  ! if type_source == 1 
+  integer, parameter :: wavefront = 1 ! 1. Wavefront in x direction, 2. Wavefront in y direction
+  ! if type_source == 1,2 or 3
+  double precision, parameter :: xsource = 10000.d0
+  double precision, parameter :: ysource = 10000.d0
   integer, parameter :: ISOURCE = xsource / DELTAX + 1
   integer, parameter :: JSOURCE = ysource / DELTAY + 1
+  ! if type_source == 3 
   double precision, parameter :: SSF_Sigma = 500.d0
   ! spread the source spatial function
   double precision :: distance2, factor_ssf
+ 
  
   double precision, parameter :: obstacle_xstart = -1000.d0
   double precision, parameter :: obstacle_xend   = 50000.d0
@@ -67,17 +75,18 @@ module parameters
   integer, parameter :: JObs_end   = obstacle_yend   / DELTAY + 1
   double precision, parameter :: obstacle_factor_rho = 1.0d0
   double precision, parameter :: obstacle_factor_c2 = 1.1d0
-  logical, parameter :: add_wind_profile = .true.
+  logical, parameter :: add_wind_profile = .false.
   
   character(len=100) :: input_rho0_prior
   character(len=100) :: input_c0_prior
   character(len=100) :: input_windx_prior
   character(len=100) :: input_windy_prior
   
-  integer, parameter :: NPERTURB_MODEL = 2
-  double precision, dimension(NPERTURB_MODEL,7), parameter :: ADD_PERTURB_MODEL_INFO = transpose(reshape( &
-                 (/ 1.d0, 12000.d0, 2000.d0, 15000.d0, 3000.d0,1.2d0,1.1d0, &
-                    2.d0,  5000.d0,  5000.d0,  1500.d0,    0.0d0,1.3d0,1.1d0/), (/7,NPERTURB_MODEL/))) 
+  integer, parameter :: NPERTURB_MODEL = 1
+  double precision, dimension(NPERTURB_MODEL,7), parameter :: ADD_PERTURB_MODEL_INFO = &
+                transpose(reshape( & ! (/ 1.d0, 12000.d0, 2000.d0, 15000.d0, 3000.d0,1.2d0,1.1d0, &
+                   (/ 1.d0,  15000.d0,  -1000.d0,  41000.d0, 41000.0d0,1.0d0,1.1d0/), (/7,NPERTURB_MODEL/))) 
+                 !   (/ 2.d0,  7500.d0,  5000.d0,  1500.d0, 0.0d0,1.3d0,1.1d0/), (/7,NPERTURB_MODEL/))) 
                  
   
 
@@ -102,13 +111,29 @@ module parameters
 !  double precision, parameter :: yfin = 5000.d0   ! last receiver y in meters
 
 
- integer, parameter :: NREC_SET = 4
- integer, dimension(NREC_SET), parameter :: NREC_PER_SET = (/9,9,9,9/) 
+ integer, parameter :: NREC_SET = 20
+ integer, dimension(NREC_SET), parameter :: NREC_PER_SET = (/35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35/) 
  double precision, dimension(NREC_SET,4), parameter :: REC_SET_INFO = transpose(reshape( &
-                  (/ 2000,1000,2000,9000, &
-                     4000,1000,4000,9000, &
-                     6000,1000,6000,9000, &
-                     8000,1000,8000,9000/), (/4,NREC_SET/)))
+     (/ 3000,	 500,	37000,	 500,	&
+        3000,	1500,	37000,	1500,	&
+        3000,	2500,	37000,	2500,	&
+        3000,	3500,	37000,	3500,	&
+	3000,	4500,	37000,	4500,	&
+	3000,	5500,	37000,	5500,	&
+	3000,	6500,	37000,	6500,	&
+	3000,	7500,	37000,	7500,	&
+	3000,	8500,	37000,	8500,	&
+	3000,	9500,	37000,	9500,	&
+	3000,	10500,	37000,	10500,	&
+	3000,	11500,	37000,	11500,	&
+	3000,	12500,	37000,	12500,	&
+	3000,	13500,	37000,	13500,	&
+	3000,	14500,	37000,	14500,	&
+	3000,	15500,	37000,	15500,	&
+	3000,	16500,	37000,	16500,	&
+	3000,	17500,	37000,	17500, &
+	3000,	18500,	37000,	18500,	&
+	3000,	19500,	37000,	19500  /), (/4,NREC_SET/)))
  integer, parameter :: NREC = sum(NREC_PER_SET)
 
 ! method
@@ -116,7 +141,7 @@ module parameters
  integer, parameter :: method = 2
  
 ! display information on the screen from time to time
-  integer, parameter :: IT_DISPLAY = NSTEP !200
+  integer, parameter :: IT_DISPLAY = 200! NSTEP !200
 
 ! compute some constants once and for all for the fourth-order spatial scheme
 ! These coefficients are given for instance by Levander, Geophysics, vol. 53(11), p. 1436, equation (A-2)
@@ -130,8 +155,6 @@ module parameters
   ! Some constants for the derivation in time
   double precision, parameter :: ONE_OVER_DELTAT = 1.d0 / (DELTAT)
 
-! value of PI
-  double precision, parameter :: PI = 3.141592653589793238462643d0
 ! zero
   double precision, parameter :: ZERO = 0.d0
 ! large value for maximum and minimum
@@ -151,7 +174,7 @@ module parameters
 
 
   ! for the source
-  double precision :: a,t,source_term
+  double precision :: t,source_term
   
   ! for receivers
   double precision xspacerec,yspacerec,distval,dist
@@ -165,6 +188,7 @@ module parameters
 
   double precision, dimension(NSTEP,NREC) :: sispressure_true, sispressure_prior
   double precision norm_pressure_true
+  double precision, dimension(NREC) :: norm_pressure_true_per_rec
 
   double precision, dimension(-1:NX_LOCAL+2, -1:NY_LOCAL+2) :: K_rho0, K_windx, K_windy, K_p0
 
@@ -178,8 +202,8 @@ module parameters
   ! flags to add PML layers to the edges of the grid
   logical, parameter :: USE_PML_XMIN = .true.
   logical, parameter :: USE_PML_XMAX = .true.
-  logical, parameter :: USE_PML_YMIN = .true.
-  logical, parameter :: USE_PML_YMAX = .true.
+  logical, parameter :: USE_PML_YMIN = .false.
+  logical, parameter :: USE_PML_YMAX = .false.
   ! thickness of the PML layer in grid points
   integer, parameter :: NPOINTS_PML = 20
   ! power to compute d0 profile
@@ -323,7 +347,7 @@ module parameters
  double precision, parameter :: c2 = 0.9
   
  double precision, parameter :: rate = 0.8d0
- integer, parameter :: maxiter_backtracking = 20
+ integer, parameter :: maxiter_backtracking = 50
 
  integer, parameter :: maxiter = 100
  double precision :: tol_x = 1e-10

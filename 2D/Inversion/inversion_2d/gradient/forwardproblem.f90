@@ -319,7 +319,6 @@ implicit none
 
 ! add source
 ! add the source (pressure located at a given grid point)
-  a = pi*pi*f0*f0
   t = dble(it-1)*DELTAT
 
 ! Gaussian
@@ -329,34 +328,56 @@ implicit none
   !source_term = (8 * a* (t-t0))**2  *  factor * exp(- 4 * a*(t-t0)*(t-t0))  ! / (2.d0 * a)
   !source_term = factor * exp(- 4 * a*(t-t0)*(t-t0))  ! / (2.d0 * a)
 
-! define location of the source
-  !i = ISOURCE
-  j = JSOURCE - offset_j
-  i = ISOURCE - offset_i
-  !if (i_rank == ISOURCE / NX_LOCAL .and. j_rank == JSOURCE / NY_LOCAL) then ! TODO
-    if (i_rank == ISOURCE / NX_LOCAL .and. j_rank == JSOURCE / NY_LOCAL) then ! TODO
-! the pressure source is added to d(pressure)/dt in this split pressure / velocity scheme
-! and that is why we need to select the first derivative of a Gaussian as a source time wavelet
-! above instead of a Ricker (i.e. a second derivative) added to d2(pressure)/dt2
-! as in the unsplit equation written in pressure only.
-! Since the formula is d(pressure)/dt = (pressure_new - pressure_old) / DELTAT = pressure_source_term
-! we also need to multiply by DELTAT here to avoid having an amplitude of the seismogram
-! that varies when one changes the time step, i.e. we write:
-! pressure_new = pressure_old + pressure_source_term * DELTAT at the source grid point
-    !do j = 1,NY
-      !rho0_half_y = 0.5d0 * (rho0(i,j+1) + rho0(i,j))
-      !vy(i,j) = vy(i,j) + source_term * DELTAT / rho0_half_y * 0.5d0
-      !distance2 = ((i - Isource) * DELTAX)**2 + ((j - Jsource) * DELTAY)**2
-      factor_ssf = 1 !exp( - distance2 / SSF_Sigma**2 )
-      pressure(i,j) = pressure(i,j) + source_term * factor_ssf * DELTAT
-      rhop(i,j) = rhop(i,j) + source_term * factor_ssf * DELTAT * (rho0(i,j)/gamma_chimie / p0(i,j))
-    !enddo
-  endif
+! define location of the source  
+  if (type_source == 1) then
+    ! plane wave case 
+    if (wavefront == 1 .and. i_rank == ISOURCE / NX_LOCAL) then
+      i = ISOURCE - offset_i
+      do j = 1,NY_LOCAL
+        pressure(i,j) = pressure(i,j) + source_term * DELTAT
+        rhop(i,j) = rhop(i,j) + source_term * DELTAT * (rho0(i,j)/gamma_chimie / p0(i,j))
+    enddo
+    elseif (wavefront ==2 .and. j_rank == JSOURCE / NY_LOCAL) then
+      j = JSOURCE - offset_j
+      do i = 1,NX_LOCAL
+        pressure(i,j) = pressure(i,j) + source_term * DELTAT
+        rhop(i,j) = rhop(i,j) + source_term * DELTAT * (rho0(i,j)/gamma_chimie / p0(i,j))
+      enddo
+    endif
+    
+  elseif (type_source == 2 ) then
+    ! point source case 
+    j = JSOURCE - offset_j
+    i = ISOURCE - offset_i
+    if (i_rank == ISOURCE / NX_LOCAL .and. j_rank == JSOURCE / NY_LOCAL) then   
+      pressure(i,j) = pressure(i,j) + source_term * DELTAT
+      rhop(i,j) = rhop(i,j) + source_term * DELTAT * (rho0(i,j)/gamma_chimie / p0(i,j))
+    endif
+     
+   else if (type_source ==3) then  
+    ! point source case with SPREAD_SSF
+      do j = 1,NY_LOCAL
+       do i = 1,NX_LOCAL
+ 
+          distance2 = ((i + offset_i - Isource) * DELTAX)**2 + ((j + offset_j - Jsource) * DELTAY)**2
+          factor_ssf = exp( - distance2 / SSF_Sigma**2 )
+         
+          pressure(i,j) = pressure(i,j) + source_term * factor_ssf * DELTAT
+          rhop(i,j) = rhop(i,j) + source_term * factor_ssf * DELTAT * (rho0(i,j)/gamma_chimie / p0(i,j))
+      enddo
+     enddo
+     
 
+  endif  
+    
   ! write the source
   open(unit=211,file='./OUTPUT/source_time_function_model.dat',status='unknown',position="append")
-    write(211,*) (t-t0), source_term
+   write(211,*) (t-t0), source_term
   close(211)
+  
+  
+
+
 
 
 

@@ -53,7 +53,7 @@ subroutine send_receive_topbottom(var)
   use mpi
   use parameters, only : NX_LOCAL,NY_LOCAL,number_of_values_y, &
                      receiver_top_shift,sender_top_shift,receiver_bottom_shift,sender_bottom_shift,&
-                     message_tag, message_status, code
+                     message_tag, message_status, code, rank
   implicit none
   
   double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2) :: var

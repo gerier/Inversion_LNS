@@ -97,6 +97,9 @@ subroutine optimisation() ! TODO
   call save_info_inversion(iter)
   iter = iter + 1  
   
+  if (rank ==0) then
+    print *, "Improvement in misfit:", fx -fx_old
+  endif
  enddo
  
 endsubroutine optimisation
@@ -283,7 +286,8 @@ endsubroutine bestAlpha
 
 subroutine backtracking()
 ! algorithm 3.1 p37 from Nocedal, 2006
-use parameters, only : alpha, Nflat,fx,fx_new,rate,maxiter_backtracking,x,r,x_new,fx_new,dfx_new,alpha_start,dfx_r
+use parameters, only : alpha, Nflat,fx,fx_new,rate,maxiter_backtracking,x,r,x_new,fx_new,dfx_new,alpha_start,dfx_r,&
+rho0_prior, K_rho0,prod_NXNY_LOCAL
 implicit none
  logical :: sufficientdecrease = .False.
  integer :: iter
@@ -304,8 +308,9 @@ implicit none
         
         ! update
         call update(x, alpha, r, x_new)
+        !print *, x_new(:prod_NXNY_local) <= 0.0
         call f(x_new, fx_new)
-
+	
         alpha_hist(iter,1) = alpha
         alpha_hist(iter,2) = fx_new
         size_alpha_hist = size_alpha_hist + 1 
@@ -501,9 +506,57 @@ subroutine permut(alpha_high, alpha_low, x_high, x_low, fx_high, fx_low, dfx_hig
 endsubroutine permut
 
 
-!function lissage() ! TODO
+subroutine gaussian_filter(u,mask_dim)
+  use parameters, only : NX_LOCAL, NY_LOCAL
+  integer :: mask_dim
+  double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2), intent(inout) :: u
+  double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2) :: u_old
+  double precision:: aux
+  integer :: i,j
+  
+  double precision, dimension(5,5) :: mask_2d = reshape( (/1., 4., 6., 4., 1., &
+                                                        4.,16.,25.,16., 4., &
+                                                        6.,25.,40.,25., 6., &
+                                                        4.,16.,25.,16., 4., &
+                                                        1., 4., 6., 4., 1./), (/5,5/))  /264
+                                                        
+ double precision, dimension(5) :: mask_1d = (/1., 4., 6., 4., 1./) /16     
+                                                  
+  if (mask_dim == 2) then
+   u_old(:,:) = u(:,:) 
+   do j=1,NY_LOCAL
+    do i=1,NX_LOCAL
+      u(i,j) = sum(u_old(i-2:i+2,j-2:j+2) * mask_2d(:,:))
+    enddo
+   enddo 
+  elseif (mask_dim == 1) then
+    u_old(1,:) = u(1,:)
+    do j=1,NY_LOCAL
+      u_aux = sum(u_old(1,j-2:j+2) * mask_1d(:))
+      u(:,j) = u_aux
+    enddo
+    
+  endif
+  
+endsubroutine gaussian_filter
 
-!endfunction lissage()
+subroutine smoothing(x) ! TODO
+
+  use parameters, only : Nflat,rho0_prior,p0_prior,windx_prior,NX_LOCAL,NY_LOCAL,rank
+  implicit none
+  integer :: ii,jj
+  double precision, dimension(Nflat), intent(inout) :: x
+  character(len=100) :: file_name
+  call flatmodel2priormodel(x)
+    
+  ! gaussian filter is applied
+  call gaussian_filter(rho0_prior,2)
+  call gaussian_filter(p0_prior,2)
+  call gaussian_filter(windx_prior,1)
+ 
+  call priormodel2flatmodel(x)
+ 
+endsubroutine smoothing
 
 
 subroutine update(x,alpha,p,x_new) 
@@ -512,6 +565,7 @@ subroutine update(x,alpha,p,x_new)
  double precision, dimension(Nflat) :: x, p, x_new
  double precision :: alpha 
  x_new = x + alpha * p
+ call smoothing(x_new)
 endsubroutine update
 
 
