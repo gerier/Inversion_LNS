@@ -138,7 +138,7 @@ module parameters
 
 ! method
 ! 1: forward, 2: kernel, 3: inversion
- integer, parameter :: method = 2
+ integer, parameter :: method = 3
  
 ! display information on the screen from time to time
   integer, parameter :: IT_DISPLAY = 200! NSTEP !200
@@ -338,6 +338,13 @@ module parameters
  integer, dimension(4), parameter :: scale_model = (/1,1,1,1/)
  integer, parameter :: Nflat = NY_LOCAL * (2*NX_LOCAL + 1) 
  
+ integer, parameter :: type_regul_term = 1 ! 0. None
+                                           ! 1. Norm of current model - a priori model, 
+                                           ! 2. (Not implemented - gradient),
+                                           ! 3. (Not implemented - laplacian)  
+ double precision, parameter :: regul_weight = 0.01
+ double precision, dimension(Nflat) :: factor_regul_SRdist
+ 
  double precision :: alpha_start, alpha, alpha_prec, alpha_low, alpha_high
  
  integer :: count_grad, count_restart, count_f
@@ -353,7 +360,7 @@ module parameters
  double precision :: tol_x = 1e-10
  double precision :: alpha_max = 10
  
- double precision, dimension(1:Nflat) :: x0
+ double precision, dimension(1:Nflat) :: m0     ! a priori model
  double precision, dimension(1:Nflat) :: x,dfx
  double precision :: fx
 

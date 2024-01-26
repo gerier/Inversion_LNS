@@ -126,9 +126,9 @@ if to_check_CFL:
 # define the space
 h = 100      # size of the mesh
 z_aux = np.arange(z0, zmax+h, h)
-z = np.zeros(2*len(z_aux))
-z[:len(z_aux)] = z_aux
-z[len(z_aux):] = z_aux + z_aux[-1]
+z = z_aux# np.zeros(2*len(z_aux))
+#z[:len(z_aux)] = z_aux
+#z[len(z_aux):] = z_aux + z_aux[-1]
 
 # define Time
 t = 0
@@ -139,7 +139,7 @@ dt = 0.05
 # RECEIVERS PARAMETERS
 #######################
 # (np.linspace(200,500,6) + nb_index_neg).astype('int')# [400+nb_index_neg] #(np.linspace(0,180,181) + nb_index_neg).astype('int') #[100+nb_index_neg]
-index_receivers = (np.linspace(50,400,351) + nb_index_neg).astype('int') #[int(20*1000/h)+nb_index_neg]
+index_receivers = (np.linspace(50,350,301) + nb_index_neg).astype('int') #[int(20*1000/h)+nb_index_neg]
 
 
 model_MSIS = False
@@ -159,9 +159,13 @@ if model_MSIS:
     ###########################
     AP_model = deepcopy(GT_model)
     for i in range(len(AP_model)):
-        AP_model[i] = np.mean(AP_model[i]) * np.ones(len(AP_model[i]))
-        #AP_model[i] = AP_model[i] *1.1
+        #AP_model[i] = np.mean(AP_model[i]) * np.ones(len(AP_model[i]))
+        AP_model[i] = AP_model[i] *1.1
     [rho0, T0, c, p0, g, kappa, mu, eta, v0, cv, gamma, l, Cv] = AP_model
+
+    gamma = 1.4 
+    GT_gamma = gamma
+    GT_c2 = GT_p0 * 1.4 / GT_rho0
 
 elif etage_gaussienne:
     aux_model = get_true_model(6, [], ["", z, 1, 0])
@@ -243,7 +247,7 @@ elif triangle :
     delta = 0.2*10*2
     GT_rho0 = deepcopy(rho0)
     GT_rho0[obs_pt1:obs_pt2] = delta/(z[obs_pt2]-[obs_pt1]) * z[obs_pt1:obs_pt2] +  rho0[0] - delta/(z[obs_pt2]-[obs_pt1]) * z[obs_pt1]
-    GT_rho0[obs_pt2:obs_pt3] =  -delta/(z[obs_pt2]-[obs_pt3]) * z[ogbs_pt2:obs_pt3] +  rho0[0] + delta/(z[obs_pt2]-[obs_pt3]) * z[obs_pt3]
+    GT_rho0[obs_pt2:obs_pt3] =  -delta/(z[obs_pt2]-[obs_pt3]) * z[obs_pt2:obs_pt3] +  rho0[0] + delta/(z[obs_pt2]-[obs_pt3]) * z[obs_pt3]
 
     v0 = 0*1 + 0*v0
     GT_v0 = 0*1 + 0*v0
@@ -281,6 +285,15 @@ else:
     c2 = c**2
     GT_c2 = deepcopy(c2)
     GT_c2[obs_start:obs_end] *= factor_c
+
+
+    factor_rho = 1.2
+    factor_c = 0.9
+    obs_start = int(22*1000/h + nb_index_neg) #int(20*1000/h + nb_index_neg)
+    obs_end = int(25*1000/h + nb_index_neg) #int(30/h*1000 + nb_index_neg)
+    GT_rho0[obs_start:obs_end] *= factor_rho
+    GT_c2[obs_start:obs_end] *= factor_c
+
 
     v0 =  0*v0#+30
     GT_v0 = 0*deepcopy(v0) #+100

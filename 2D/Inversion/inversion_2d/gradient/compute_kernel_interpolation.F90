@@ -208,22 +208,8 @@ subroutine compute_kernel()
   endif
 
   ! Save kernel information
-  !call create_color_image(K_rho0,NX,NY,it,ISOURCE,JSOURCE,ix_rec,iy_rec,nrec, &
-  !            NPOINTS_PML,USE_PML_XMIN,USE_PML_XMAX,USE_PML_YMIN,USE_PML_YMAX,444)
-  !call create_color_image(K_p0,NX,NY,it,ISOURCE,JSOURCE,ix_rec,iy_rec,nrec, &
-  !            NPOINTS_PML,USE_PML_XMIN,USE_PML_XMAX,USE_PML_YMIN,USE_PML_YMAX,111)
-  !call create_color_image(K_windy,NX,NY,it,ISOURCE,JSOURCE,ix_rec,iy_rec,nrec, &
-  !            NPOINTS_PML,USE_PML_XMIN,USE_PML_XMAX,USE_PML_YMIN,USE_PML_YMAX,222)
-  !call create_color_image(K_windx,NX,NY,it,ISOURCE,JSOURCE,ix_rec,iy_rec,nrec, &
-  !            NPOINTS_PML,USE_PML_XMIN,USE_PML_XMAX,USE_PML_YMIN,USE_PML_YMAX,333)
-  
   call gather_and_generate_image(K_windx,K_windy,K_p0,K_rho0,it,3)
 
-  !OPEN(UNIT=12, FILE="OUTPUT/K_windx.txt", ACTION="write")
-  !DO ii=1,NX
-  !  WRITE(12,*) (K_windx(ii,jj), jj=1,NY)
-  !END DO
-  !CLOSE(12)
   !  write(file_name, "('./OUTPUT/Kwindx_true_',i6.6,'.txt')") rank
   !  OPEN(UNIT=12, FILE=file_name, ACTION="write")
   !  DO ii=1,NX_LOCAL
@@ -231,11 +217,6 @@ subroutine compute_kernel()
   !  END DO
   !  CLOSE(12)
 
-  !OPEN(UNIT=12, FILE="OUTPUT/K_windy.txt", ACTION="write")
-  !DO ii=1,NX
-  !  WRITE(12,*) (K_windy(ii,jj), jj=1,NY)
-  !END DO
-  !CLOSE(12)
   !  write(file_name, "('./OUTPUT/Kwindy_true_',i6.6,'.txt')") rank
   !  OPEN(UNIT=12, FILE=file_name, ACTION="write")
   !  DO ii=1,NX_LOCAL
@@ -243,29 +224,20 @@ subroutine compute_kernel()
   !  END DO
   !  CLOSE(12)
     
-  !OPEN(UNIT=12, FILE="OUTPUT/K_rho0.txt", ACTION="write")
-  !DO ii=1,NX
-  !  WRITE(12,*) (K_rho0(ii,jj), jj=1,NY)
-  !END DO
-  !CLOSE(12)
-    write(file_name, "('./OUTPUT/Krho0_true_',i6.6,'.txt')") rank
-    OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
-      WRITE(12,*) (K_rho0(ii,jj), jj=1,NY_LOCAL)
+
+   ! write(file_name, "('./OUTPUT/Krho0_true_',i6.6,'.txt')") rank
+   ! OPEN(UNIT=12, FILE=file_name, ACTION="write")
+   ! DO ii=1,NX_LOCAL
+   !   WRITE(12,*) (K_rho0(ii,jj), jj=1,NY_LOCAL)
+   ! END DO
+   ! CLOSE(12)
+    
+   write(file_name, "('./OUTPUT/Kp0_true2_',i6.6,'.txt')") rank
+   OPEN(UNIT=12, FILE=file_name, ACTION="write")
+   DO ii=1,NX_LOCAL
+     WRITE(12,*) (K_p0(ii,jj), jj=1,NY_LOCAL)
     END DO
     CLOSE(12)
-    
-  !OPEN(UNIT=12, FILE="OUTPUT/K_p0.txt", ACTION="write")
-  !DO ii=1,NX
-  !  WRITE(12,*) (K_p0(ii,jj), jj=1,NY)
-  !END DO
-  !CLOSE(12)
-  !  write(file_name, "('./OUTPUT/Kp0_true_',i6.6,'.txt')") rank
-  !  OPEN(UNIT=12, FILE=file_name, ACTION="write")
-  !  DO ii=1,NX_LOCAL
-  !    WRITE(12,*) (K_p0(ii,jj), jj=1,NY_LOCAL)
-  !  END DO
-  !  CLOSE(12)
 
   !OPEN(UNIT=12, FILE="OUTPUT/va.txt", ACTION="write")
   !DO ii=1,NX
@@ -308,7 +280,7 @@ subroutine compute_kernel_iter(rho0, p0, windx, windy, rhop, pressure, vx, vy, r
                           type_source, wavefront,                               &
                           distance2, factor_ssf, SSF_Sigma,                     &
                           NPOINTS_PML, USE_PML_XMIN, USE_PML_YMIN,              &
-                          NX_LOCAL, NY_LOCAL, i_global, j_global, NPROC_X, NPROC_Y, I_RANK, J_RANK, offset_i, offset_j
+                          NX_LOCAL, NY_LOCAL, i_global, j_global, NPROC_X, NPROC_Y, I_RANK, J_RANK, offset_i, offset_j, rank
 
   implicit none
 
@@ -846,6 +818,7 @@ subroutine compute_kernel_iter(rho0, p0, windx, windy, rhop, pressure, vx, vy, r
     K_p0(i,j) = K_p0(i,j) - (value_dpavx_dx + value_dpavy_dy) * DELTAT
     K_p0(i,j) = K_p0(i,j) + gamma_chimie * pa(i,j) * (value_dvx_dx + value_dvy_dy) * DELTAT !
     K_p0(i,j) = K_p0(i,j) - pa(i,j) * factor_ssf * source_term * rho0(i,j) / (gamma_chimie * p0(i,j)**2)   * DELTAT
+
 
    enddo
   enddo

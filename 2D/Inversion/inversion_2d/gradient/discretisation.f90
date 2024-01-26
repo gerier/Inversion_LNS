@@ -68,9 +68,10 @@ subroutine get_index_boundarycondition(i,j, Im2, Im1,Ip1, Ip2, Jm2, Jm1,Jp1, Jp2
 	        Jm2 = -1
          elseif (j == 2) then
 	        Jm2 = 0
+	 endif
       endif
       if (j_rank == NPROC_Y-1) then
-         else if (j == NY) then
+         if (j == NY_LOCAL) then
 	        Jp1 = NY_LOCAL+1
 	        Jp2 = NY_LOCAL+2
          else if (j == NY_LOCAL-1) then

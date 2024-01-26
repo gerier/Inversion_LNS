@@ -85,7 +85,7 @@ class LNS_Model:
 
     def plot(self, abs, title):
         fig, ax = plt.subplots(4, 1, figsize=(10, 7))
-        n = int(len(abs)/2)
+        n = len(abs) #int(len(abs)/2)
 
         ax[0].plot(abs[:n], self.rho[:n])
         ax[1].plot(abs[:n], self.p[:n])

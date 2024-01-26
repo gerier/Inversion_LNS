@@ -154,9 +154,12 @@ integer :: it, it_time, time_last_frame
      enddo
 
 
-       
-     call priormodel2flatmodel(x0)
-     call optimisation(x0,100,1e-8)
+     if (type_regul_term > 0) then
+       call init_factor_regul()
+     endif 
+     
+     call priormodel2flatmodel(m0)
+     call optimisation()
      
    else 
      print *, "Can only do 1: Forward, 2: Kernel or 3: Inversion computations"

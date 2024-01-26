@@ -5,12 +5,16 @@ import glob
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({'figure.autolayout': True})
 
-iteration = 50
+iteration = 1
 
 list_rho_file = glob.glob("./OUTPUT_INVERSION/Krho0_%06d_*"%(iteration))
 list_p_file = glob.glob("./OUTPUT_INVERSION/Kp0_%06d_*"%(iteration))
 list_wx_file = glob.glob("./OUTPUT_INVERSION/Kwindx_%06d_*"%(iteration))
 list_wy_file = glob.glob("./OUTPUT_INVERSION/Kwindy_%06d_*"%(iteration))
+#list_rho_file = glob.glob("./OUTPUT/Krho0_true2_*")
+#list_p_file = glob.glob("./OUTPUT/Kp0_true2_*")
+#list_wx_file = glob.glob("./OUTPUT/Kwindx_true2_*")
+#list_wy_file = glob.glob("./OUTPUT/Kwindy_true2_*")
 
 NX = 400
 demi_NX = int(NX/2) 
@@ -61,8 +65,9 @@ plt.figure()
 plt.imshow(p)
 plt.title("Pressure")
 plt.colorbar()
-plt.show()
+plt.show() 
 
+print(p[99:102,99:102])
 
 for fich in list_wx_file:
 

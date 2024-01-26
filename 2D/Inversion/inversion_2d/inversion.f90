@@ -26,10 +26,10 @@ subroutine optimisation() ! TODO
  count_restart = 0
  
  ! initialisation 
- x(:) = x0(:) 
+ x(:) = m0(:) 
  call f(x,fx)
  call df(x,dfx) 
- 
+
  x_old(:) = 1e6 * x(:)
  fx_old = 1e10
  dfx_old(:) = 0
@@ -91,10 +91,13 @@ subroutine optimisation() ! TODO
   r_old = r(:)
   
   x(:) = x_new(:)
-  fx = fx_new 
+  fx = fx_new    
   dfx(:) = dfx_new(:)
  
   call save_info_inversion(iter)
+  call MPI_BARRIER(MPI_COMM_WORLD, code)
+
+
   iter = iter + 1  
   
   if (rank ==0) then

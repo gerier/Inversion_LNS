@@ -8,38 +8,40 @@ implicit none
  double precision, dimension(NREC) :: fm_local_per_rec
  character(len=100) :: file_name
  integer :: ii,jj
+ double precision :: regul_term
+ 
  fm_local_per_rec(:) = 0.0d0
  
  
  call flatmodel2priormodel(m)
  
-     write(file_name, "('./TEST/windx_',i6.6,'_',i6.6,'.txt')") count_f,rank
-    OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
-      WRITE(12,*) (windx_prior(ii,jj), jj=1,NY_LOCAL)
-    END DO
-    CLOSE(12)
+  !   write(file_name, "('./TEST/windx_',i6.6,'_',i6.6,'.txt')") count_f,rank
+  !  OPEN(UNIT=12, FILE=file_name, ACTION="write")
+  !  DO ii=1,NX_LOCAL
+  !    WRITE(12,*) (windx_prior(ii,jj), jj=1,NY_LOCAL)
+  !  END DO
+  !  CLOSE(12)
  
-    write(file_name, "('./TEST/windy_',i6.6,'_',i6.6,'.txt')") count_f,rank
-    OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
-      WRITE(12,*) (windy_prior(ii,jj), jj=1,NY_LOCAL)
-    END DO
-    CLOSE(12)
+  !  write(file_name, "('./TEST/windy_',i6.6,'_',i6.6,'.txt')") count_f,rank
+  !  OPEN(UNIT=12, FILE=file_name, ACTION="write")
+  !  DO ii=1,NX_LOCAL
+  !    WRITE(12,*) (windy_prior(ii,jj), jj=1,NY_LOCAL)
+  !  END DO
+  !  CLOSE(12)
     
-     write(file_name, "('./TEST/p0_',i6.6,'_',i6.6,'.txt')") count_f,rank
-    OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
-      WRITE(12,*) (p0_prior(ii,jj), jj=1,NY_LOCAL)
-    END DO
-    CLOSE(12)
+  !   write(file_name, "('./TEST/p0_',i6.6,'_',i6.6,'.txt')") count_f,rank
+  !  OPEN(UNIT=12, FILE=file_name, ACTION="write")
+  !  DO ii=1,NX_LOCAL
+  !    WRITE(12,*) (p0_prior(ii,jj), jj=1,NY_LOCAL)
+  !  END DO
+  !  CLOSE(12)
  
-    write(file_name, "('./TEST/rho0_',i6.6,'_',i6.6,'.txt')") count_f,rank
-    OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
-      WRITE(12,*) (rho0_prior(ii,jj), jj=1,NY_LOCAL)
-    END DO
-    CLOSE(12)
+  !  write(file_name, "('./TEST/rho0_',i6.6,'_',i6.6,'.txt')") count_f,rank
+  !  OPEN(UNIT=12, FILE=file_name, ACTION="write")
+  !  DO ii=1,NX_LOCAL
+  !    WRITE(12,*) (rho0_prior(ii,jj), jj=1,NY_LOCAL)
+  !  END DO
+  !  CLOSE(12)
  
  call forwardproblem(p0_prior, rho0_prior, windx_prior, windy_prior, kappa_unrelaxed_prior,  1, NSTEP, 1) 
  sispressure_prior(:,:) = sispressure(:,:)
@@ -61,6 +63,13 @@ print*, ""
  fm = DELTAT * fm / 2
 
  count_f = count_f + 1
+ 
+ if (type_regul_term == 1) then
+    
+  call MPI_ALLREDUCE( sum(factor_regul_SRdist*(m-m0)**2), regul_term, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
+  fm = fm + regul_weight * regul_term * 0.5d0
+ 
+ endif
 
 endsubroutine f
 
@@ -77,6 +86,11 @@ double precision, dimension(Nflat) :: m,flat_grad
   call compute_kernel()
   call kernelparam2inversionparam(flat_grad)
 
+ if (type_regul_term == 1) then 
+   flat_grad = flat_grad + regul_weight * factor_regul_SRdist * (m - m0)
+ endif
+
+   
   count_grad = count_grad + 1
 endsubroutine df
 
@@ -121,10 +135,10 @@ double precision, dimension(Nflat) :: flat_grad
   
   elseif (parametrisation == 4) then
     ! log density, wind, log pressure
-    if (i_rank == ISOURCE / NX_LOCAL .and. j_rank == JSOURCE / NY_LOCAL) then
-      K_p0(ISOURCE-offset_i,JSOURCE-offset_j) = 0.0d0 
-       K_rho0(ISOURCE-offset_i,JSOURCE-offset_j) = 0.0d0
-    endif
+    !if (i_rank == ISOURCE / NX_LOCAL .and. j_rank == JSOURCE / NY_LOCAL) then
+    !  K_p0(ISOURCE-offset_i,JSOURCE-offset_j) = 0.0d0 
+    !   K_rho0(ISOURCE-offset_i,JSOURCE-offset_j) = 0.0d0
+    !endif
     grad_lnp0(:,:) = p0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL)
     grad_lnrho0(:,:) = rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL)
     
@@ -314,9 +328,10 @@ endsubroutine flatmodel2priormodel
 
 subroutine priormodel2flatmodel(flat_model)
 
-use parameters
+use parameters, only : NX_LOCAL, NY_LOCAL, Nflat,prod_NXNY_LOCAL, &
+                       scale_model, rho0_prior, c0_prior, p0_prior, windx_prior, parametrisation
 implicit none
-double precision, dimension(Nflat) :: flat_model
+double precision, dimension(Nflat), intent(out) :: flat_model
 
   if (parametrisation == 1) then
   ! density, wind, velocity

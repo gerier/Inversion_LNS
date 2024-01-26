@@ -24,9 +24,9 @@ def get_model(path_file, z, no_gravity, no_wind):
             cs = CubicSpline(df["z[m]"], df[param])
             interp_physical_param += [cs(z)]
 
-    n = int(len(z)/2)
-    for param in interp_physical_param :
-        param[n:] = param[n:0:-1]
+    #n = int(len(z)/2)
+    #for param in interp_physical_param :
+    #    param[n:] = param[n:0:-1]
 
     [rho0, T0, c, p0, g, kappa, mu, eta, v0, cv, gamma] = interp_physical_param
 

@@ -32,7 +32,7 @@ K = compute_gradient(M, 0, it_end, dt, h, size, source, index_receivers, history
 
 print(time.time() - start)
 plt.figure()
-plt.plot(z[100:570]/1000,K[1,100:570])
+plt.plot(z/1000,K[0,:])
 plt.show()
 
 

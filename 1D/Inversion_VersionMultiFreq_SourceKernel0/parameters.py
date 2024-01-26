@@ -148,6 +148,7 @@ aux_model = get_true_model(6, [], ["./Flores_atmosphere_500km_86p2_4.dat", z, 0,
 
 factor_rho = 0.1
 factor_c = -0.015
+factor_v0 = 0.1
 obs_start = int(15*1000/h + nb_index_neg) #int(20*1000/h + nb_index_neg)
 obs_end = int(23*1000/h + nb_index_neg) #int(30/h*1000 + nb_index_neg)
 
@@ -159,14 +160,15 @@ for i in range(len(AP_model)):
 [rho0, T0, c, p0, g, kappa, mu, eta, v0, cv, gamma, l, Cv] = AP_model
 
 GT_rho0 = deepcopy(rho0)
-GT_rho0[obs_start:obs_end] *= 1+ factor_rho * np.exp(  - (z[obs_start:obs_end] - ( z[obs_end]+z[obs_start])/2)**2 /  200/(z[obs_end]-z[obs_start])   )
+#GT_rho0[obs_start:obs_end] *= 1+ factor_rho * np.exp(  - (z[obs_start:obs_end] - ( z[obs_end]+z[obs_start])/2)**2 /  200/(z[obs_end]-z[obs_start])   )
 
 c2 = c**2
 GT_c2 = deepcopy(c2)
-GT_c2[obs_start:obs_end] *= 1+ factor_c * np.exp(  - (z[obs_start:obs_end] - ( z[obs_end]+z[obs_start])/2)**2 /  200/(z[obs_end]-z[obs_start])   )
+#GT_c2[obs_start:obs_end] *= 1+ factor_c * np.exp(  - (z[obs_start:obs_end] - ( z[obs_end]+z[obs_start])/2)**2 /  200/(z[obs_end]-z[obs_start])   )
 
-v0 =  0*v0#+30
-GT_v0 = 0*deepcopy(v0) #+100
+v0 =  10 +0*v0#+30
+GT_v0 = deepcopy(v0) #+100
+GT_v0[obs_start:obs_end] *= 1+ factor_v0 * np.exp(  - (z[obs_start:obs_end] - ( z[obs_end]+z[obs_start])/2)**2 /  200/(z[obs_end]-z[obs_start])   )
 
 gamma = 1.4
 GT_gamma = gamma

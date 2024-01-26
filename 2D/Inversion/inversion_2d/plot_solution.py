@@ -5,7 +5,7 @@ import glob
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({'figure.autolayout': True})
 
-iteration = 6
+iteration = 99
 
 list_rho_file = glob.glob("./OUTPUT_INVERSION/rho0_%06d_*"%(iteration))
 list_p_file = glob.glob("./OUTPUT_INVERSION/p0_%06d_*"%(iteration))

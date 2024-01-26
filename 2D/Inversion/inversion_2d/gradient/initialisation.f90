@@ -183,3 +183,36 @@ use parameters
   
   
 endsubroutine init_source_recvrs
+
+
+subroutine init_factor_regul()
+
+ use parameters !, only : factor_regul_SRdist, NX_LOCAL, NY_LOCAL, DELTAX, DELTAY,  wavefront,&
+                !        type_source, f0, ISOURCE, JSOURCE,offset_i, offset_j, distance2
+ implicit none
+ character(len=100) :: file_name
+ integer :: i,j, ii,jj
+ double precision :: distance2_wind
+
+ do j=1,NY_LOCAL
+  do i=1,NX_LOCAL
+    if (type_source == 1 .and. wavefront == 1) then
+      distance2 = ((i + offset_i - Isource) * DELTAX)**2  
+    elseif (type_source == 1 .and. wavefront == 2) then
+     distance2 = ((j + offset_j - Jsource) * DELTAY)**2 
+    elseif (type_source ==2 .or. type_source == 3) then
+       distance2 = ((i + offset_i - Isource) * DELTAX)**2 + ((j + offset_j - Jsource) * DELTAY)**2
+    endif
+     factor_regul_SRdist(i+(j-1)*NX_LOCAL) = 1 + 50 * exp(- distance2/1e5)
+     factor_regul_SRdist(prod_NXNY_LOCAL + i+(j-1)*NX_LOCAL) = 1 + 50 * exp(- distance2/1e5)
+  enddo
+  if (type_source == 1 .and. wavefront == 1) then
+    distance2_wind = 0
+  else 
+    distance2_wind =  ((j + offset_j - Jsource) * DELTAY)**2  
+  endif
+  factor_regul_SRdist(2*prod_NXNY_LOCAL + j) = 1 + 50 * exp(- distance2_wind*f0/1e5)
+ enddo
+
+    
+endsubroutine init_factor_regul
