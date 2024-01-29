@@ -118,6 +118,7 @@ integer :: i_min,i_max,j_min,j_max
     ! write the background model
   !call write_background(rho0_prior, kappa_unrelaxed_prior, p0_prior, windx_prior, windy_prior, gamma_chimie)
 
+  c0_prior(:,:) = sqrt(gamma_chimie * p0_prior(:,:) / rho0_prior(:,:)) 
 
 endsubroutine init_backgrounds
  

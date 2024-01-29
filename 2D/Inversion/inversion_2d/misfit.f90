@@ -126,8 +126,8 @@ double precision, dimension(Nflat) :: flat_grad
     c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chimie * p0_prior(1:NX_LOCAL,1:NY_LOCAL)/ rho0_prior(1:NX_LOCAL,1:NY_LOCAL))
     grad_lnc0(:,:) = 2 * c0_prior(1:NX_LOCAL,1:NY_LOCAL)**2 * rho0_prior(1:NX_LOCAL,1:NY_LOCAL) / gamma_chimie &
                        * K_p0(1:NX_LOCAL,1:NY_LOCAL)
-    grad_lnrho0(:,:) = p0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL) &
-                       + K_rho0(1:NX_LOCAL,1:NY_LOCAL) 
+    grad_lnrho0(:,:) =  p0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL) &
+                       + rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL) 
     
     flat_grad(:prod_NXNY_LOCAL) = scale_model(1) * reshape(grad_lnrho0,[prod_NXNY_LOCAL])
     flat_grad(prod_NXNY_LOCAL+1:2*prod_NXNY_LOCAL) = scale_model(3) * reshape(grad_lnc0,[prod_NXNY_LOCAL])
@@ -147,6 +147,17 @@ double precision, dimension(Nflat) :: flat_grad
   
     flat_grad(2*prod_NXNY_LOCAL+1:Nflat)= scale_model(4) * K_windx(1,1:NY_LOCAL)
     
+  elseif (parametrisation == 5) then
+    ! log celerity, wind, log pressure
+    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chimie * p0_prior(1:NX_LOCAL,1:NY_LOCAL)/ rho0_prior(1:NX_LOCAL,1:NY_LOCAL))
+    grad_lnc0(:,:) = - 2 * rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL)
+    grad_lnp0(:,:) = p0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL) &
+                       + rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL) 
+    
+    flat_grad(:prod_NXNY_LOCAL) = scale_model(3) * reshape(grad_lnc0,[prod_NXNY_LOCAL])
+    flat_grad(prod_NXNY_LOCAL+1:2*prod_NXNY_LOCAL) = scale_model(2) * reshape(grad_lnp0,[prod_NXNY_LOCAL])
+    flat_grad(2*prod_NXNY_LOCAL+1:Nflat)= scale_model(4) * K_windx(1,1:NY_LOCAL)
+     
   else
     print *, "ERROR: parametrisation unknown"
     stop  
@@ -173,9 +184,7 @@ integer :: i
    
    rho0_prior(1:NX_LOCAL,1:NY_LOCAL) = reshape(flat_rho0, (/NX_LOCAL, NY_LOCAL/))
    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = reshape(flat_c0, (/NX_LOCAL, NY_LOCAL/))
-   do i=1,NX_LOCAL
-     windx_prior(i,1:NY_LOCAL) = flat_windx(1:NY_LOCAL)
-   enddo
+
    p0_prior(1:NX_LOCAL,1:NY_LOCAL) = rho0_prior(1:NX_LOCAL,1:NY_LOCAL) &
                      * c0_prior(1:NX_LOCAL,1:NY_LOCAL)**2 / gamma_chimie
    
@@ -187,9 +196,6 @@ integer :: i
    
    rho0_prior(1:NX_LOCAL,1:NY_LOCAL) = reshape(flat_rho0, (/NX_LOCAL, NY_LOCAL/))
    p0_prior(1:NX_LOCAL,1:NY_LOCAL) = reshape(flat_p0, (/NX_LOCAL, NY_LOCAL/))
-   do i=1,NX_LOCAL
-     windx_prior(i,1:NY_LOCAL) = flat_windx(1:NY_LOCAL)
-   enddo
    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt( p0_prior(1:NX_LOCAL,1:NY_LOCAL) * gamma_chimie &
                              /rho0_prior(1:NX_LOCAL,1:NY_LOCAL))
    
@@ -201,9 +207,7 @@ integer :: i
    
    rho0_prior(1:NX_LOCAL,1:NY_LOCAL) = reshape(flat_rho0, (/NX_LOCAL, NY_LOCAL/))
    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = reshape(flat_c0, (/NX_LOCAL, NY_LOCAL/))
-   do i=1,NX_LOCAL
-     windx_prior(i,1:NY_LOCAL) = flat_windx(1:NY_LOCAL)
-   enddo
+
    p0_prior(1:NX_LOCAL,1:NY_LOCAL) = rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * &
                                    c0_prior(1:NX_LOCAL,1:NY_LOCAL)**2 / gamma_chimie
    
@@ -216,13 +220,24 @@ integer :: i
    
    rho0_prior(1:NX_LOCAL,1:NY_LOCAL) = reshape(flat_rho0, (/NX_LOCAL, NY_LOCAL/))  
    p0_prior(1:NX_LOCAL,1:NY_LOCAL) = reshape(flat_p0, (/NX_LOCAL, NY_LOCAL/))
-   !do i=1,NX_LOCAL
-   !  windx_prior(i,1:NY_LOCAL) = flat_windx(1:NY_LOCAL)
-   !enddo
+
     
    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt( p0_prior(1:NX_LOCAL,1:NY_LOCAL) * gamma_chimie &
                              /rho0_prior(1:NX_LOCAL,1:NY_LOCAL))
    
+  elseif (parametrisation == 5) then
+  ! log celerity, wind, log pressure
+  
+   flat_c0 = exp(scale_model(3)  * flat_model(1:prod_NXNY_LOCAL))
+   flat_p0 = exp(scale_model(2)  * flat_model(prod_NXNY_LOCAL+1:2*prod_NXNY_LOCAL))
+   flat_windx = scale_model(4) * flat_model(1+2*prod_NXNY_LOCAL:)
+   
+   c0_prior(1:NX_LOCAL,1:NY_LOCAL) = reshape(flat_c0, (/NX_LOCAL, NY_LOCAL/))  
+   p0_prior(1:NX_LOCAL,1:NY_LOCAL) = reshape(flat_p0, (/NX_LOCAL, NY_LOCAL/))
+    
+   rho0_prior(1:NX_LOCAL,1:NY_LOCAL) =  p0_prior(1:NX_LOCAL,1:NY_LOCAL) * gamma_chimie &
+                             /c0_prior(1:NX_LOCAL,1:NY_LOCAL)**2
+                             
   else
     print *, "ERROR: parametrisation unknown"
     stop 
@@ -356,6 +371,13 @@ double precision, dimension(Nflat), intent(out) :: flat_model
   flat_model(1:prod_NXNY_LOCAL) = reshape( log(rho0_prior(1:NX_LOCAL,1:NY_LOCAL) / scale_model(1)),[prod_NXNY_LOCAL])
   flat_model(prod_NXNY_LOCAL+1:2*prod_NXNY_LOCAL) = reshape(log(p0_prior(1:NX_LOCAL,1:NY_LOCAL)/ scale_model(2)),[prod_NXNY_LOCAL])
   flat_model(2*prod_NXNY_LOCAL+1:Nflat)= windx_prior(1,1:NY_LOCAL)/ scale_model(4)
+  
+  elseif (parametrisation == 5) then
+  ! log celerity, wind, log pressure
+  flat_model(1:prod_NXNY_LOCAL) = reshape( log(c0_prior(1:NX_LOCAL,1:NY_LOCAL) / scale_model(3)),[prod_NXNY_LOCAL])
+  flat_model(prod_NXNY_LOCAL+1:2*prod_NXNY_LOCAL) = reshape(log(p0_prior(1:NX_LOCAL,1:NY_LOCAL)/ scale_model(2)),[prod_NXNY_LOCAL])
+  flat_model(2*prod_NXNY_LOCAL+1:Nflat)= windx_prior(1,1:NY_LOCAL)/ scale_model(4)
+  
   
   else
     print *, "ERROR: parametrisation unknown"
