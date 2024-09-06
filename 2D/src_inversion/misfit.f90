@@ -6,9 +6,7 @@ implicit none
  double precision, dimension(Nflat) :: m
  integer :: irec
  double precision, dimension(NREC) :: fm_local_per_rec
- double precision :: regul_term_p0,regul_term_p0_true
- double precision :: regul_term_rho0,regul_term_rho0_true
- double precision :: regul_term_windx,regul_term_windx_true
+ double precision :: regul_term_p0, regul_term_rho0,regul_term_windx
  double precision, dimension(Nflat) :: norm2_m, norm2_mm0
  fm_local_per_rec(:) = 0.0d0
 
@@ -51,18 +49,6 @@ norm2_m(:) = 0.0d0
   call MPI_ALLREDUCE( sum(norm2_mm0(2*NY_LOCAL+1:Nflat)), regul_term_windx, 1, MPI_DOUBLE_PRECISION, &
                                                                                     MPI_SUM,  MPI_COMM_WORLD, code)
                                                                                     
- norm2_m=(m0)**2 
-  
-  call MPI_ALLREDUCE( sum(norm2_m(1:NY_LOCAL)), regul_term_rho0_true, 1, MPI_DOUBLE_PRECISION,&
-                                                                                    MPI_SUM,  MPI_COMM_WORLD, code)
-  call MPI_ALLREDUCE( sum(norm2_m(NY_LOCAL+1:2*NY_LOCAL)), regul_term_p0_true,1,MPI_DOUBLE_PRECISION,&
-                                                                                    MPI_SUM, MPI_COMM_WORLD,code)
-  call MPI_ALLREDUCE( sum(norm2_m(2*NY_LOCAL+1:Nflat)), regul_term_windx_true, 1, MPI_DOUBLE_PRECISION, &
-                                                                                    MPI_SUM,  MPI_COMM_WORLD, code)
-                                                                             
-  if (regul_term_windx_true < TINYVAL) then
-  	regul_term_windx_true = 1.0
-  endif
   
   fm = fm + regul_weight * 0.5d0 * &
          (regul_term_p0/regul_term_p0_true + regul_term_rho0/regul_term_rho0_true + regul_term_windx/regul_term_windx_true)
@@ -103,9 +89,11 @@ ONE_OVER_DXDY = 1 / DELTAX**2 / DELTAY**2
  
 
     reg_grad(:) = 0.0d0
-    reg_grad(1:2*NY_LOCAL) = regul_weight * factor_regul_SRdist(1:2*NY_LOCAL)  &
-                                    * (m(1:2*NY_LOCAL) - m0(1:2*NY_LOCAL))
-   flat_grad = flat_grad + reg_grad 
+    reg_grad(1:NY_LOCAL) = (m(1:NY_LOCAL) - m0(1:NY_LOCAL)) / regul_term_rho0_true
+    reg_grad(NY_LOCAL+1:2*NY_LOCAL) = (m(NY_LOCAL+1:2*NY_LOCAL) - m0(NY_LOCAL+1:2*NY_LOCAL)) / regul_term_p0_true
+    reg_grad(2*NY_LOCAL+1:3*NY_LOCAL) = (m(2*NY_LOCAL+1:3*NY_LOCAL) - m0(2*NY_LOCAL+1:3*NY_LOCAL)) / regul_term_windx_true
+
+   flat_grad = flat_grad + 0.5 * regul_weight * reg_grad * factor_regul_SRdist
    
    
    

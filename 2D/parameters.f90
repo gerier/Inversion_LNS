@@ -21,12 +21,6 @@ module parameters
   double precision, parameter :: DELTAX = 100.d0
   double precision, parameter :: DELTAY = DELTAX
 
-! P-velocity and density
-! the unrelaxed value is the value at frequency = 0 (the relaxed value would be the value at frequency = +infinity)
-  double precision, parameter :: cp_unrelaxed = 347.763977d0 
-  double precision, parameter :: density = 1.13837624d0 
-  double precision, parameter :: gamma_chimie_value = 1.4d0
-
 ! Time step in seconds.
 ! The CFL stability number for the O(2,2) algorithm is 1 / sqrt(2) = 0.707
 ! i.e. one must choose  cp * deltat / deltax < 0.707.
@@ -69,16 +63,11 @@ module parameters
    character(len=200) :: atmopsheric_file_name_prior = & 
      "/home/deos/s.gerier/Bureau/Test_2006/atmospheric_model_Hukkakero.dat"
 
-  double precision, parameter :: obstacle_xstart = -1000.d0
-  double precision, parameter :: obstacle_xend   = 50000.d0
-  double precision, parameter :: obstacle_ystart = 10000.d0
-  double precision, parameter :: obstacle_yend   = 21000.d0
-  integer, parameter :: IObs_start = obstacle_xstart / DELTAX + 1
-  integer, parameter :: IObs_end   = obstacle_xend   / DELTAX + 1
-  integer, parameter :: JObs_start = obstacle_ystart / DELTAY + 1
-  integer, parameter :: JObs_end   = obstacle_yend   / DELTAY + 1
-  double precision, parameter :: obstacle_factor_rho = 1.0d0
-  double precision, parameter :: obstacle_factor_c2 = 1.0d0
+  ! P-velocity and density
+  ! the unrelaxed value is the value at frequency = 0 (the relaxed value would be the value at frequency = +infinity)
+  double precision, parameter :: cp_unrelaxed = 347.763977d0 
+  double precision, parameter :: density = 1.13837624d0 
+  double precision, parameter :: gamma_chimie_value = 1.4d0
   logical, parameter :: add_wind_profile = .false.
   
   character(len=100) :: input_rho0_prior
@@ -86,7 +75,15 @@ module parameters
   character(len=100) :: input_windx_prior
   character(len=100) :: input_windy_prior
   
+  ! add perturbation into the model
+  !! perturbation correspond to a square or a circle, in which one of the parameter (c,rho) are multiplied by a factor
+  !! define the number of perturbation
   integer, parameter :: NPERTURB_MODEL = 1
+  !! define the type of perturbation
+  !!! If perturbation has the shape of a square
+  !!!!   Type=1, x_start, y_start, x_end, y_end, factor on density, factor on celerity
+  !!! If perturbation has the shape of a circle
+  !!!!   Type=2, x_center, y_center, circle radius, None, factor on density, factor on celerity 
   double precision, dimension(NPERTURB_MODEL,7), parameter :: ADD_PERTURB_MODEL_INFO = &
                 transpose(reshape( & ! (/ 1.d0, 12000.d0, 2000.d0, 15000.d0, 3000.d0,1.2d0,1.1d0, &
                    (/ 1.d0,  -10000.d0,  -1000.d0,  61000.d0, 610000.0d0,1.d0,1.1d0/), (/7,NPERTURB_MODEL/))) 
@@ -106,7 +103,10 @@ module parameters
   
 	
  integer, parameter :: NREC_SET = 1
+ ! define receivers along a line 
+ !! for each set: define how many receivers are  on the line
  integer, dimension(NREC_SET), parameter :: NREC_PER_SET = (/200/)!,200,200,200/) 
+ !! for each set: x_start, y_start, x_end, y_end
  double precision, dimension(NREC_SET,4), parameter :: REC_SET_INFO = transpose(reshape( &
       (/0,	30000,	19900,	30000 /), (/4,NREC_SET/)))!,&
       !  0,	11000,	19900,	11000,&
@@ -178,7 +178,7 @@ module parameters
   double precision, dimension(NSTEP,NREC) :: sispressure_true, sispressure_prior
   double precision :: norm_pressure_true
   double precision, dimension(NREC) :: norm_pressure_true_per_rec
-
+  double precision :: regul_term_rho0_true,regul_term_p0_true,regul_term_windx_true
   double precision :: norm_rho0_prior, norm_p0_prior, norm_windx_prior, norm_windy_prior
 
   double precision, dimension(-1:NX_LOCAL+2, -1:NY_LOCAL+2) :: K_rho0, K_windx, K_windy, K_p0

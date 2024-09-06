@@ -91,7 +91,10 @@ subroutine optimisation() ! TODO
     
     ! find a step that respects the Strong Wolfe conditions
     call line_search() 
+    if (rank == 0) then
+    print *, "Previous cost function :", fx
     print *, "New cost function : ", fx_new
+    endif
   endif
  
   ! update iterates
@@ -111,7 +114,7 @@ subroutine optimisation() ! TODO
   iter = iter + 1  
   
   if (rank ==0) then
-    print *, "Improvement in misfit:", fx -fx_old
+    print *, "==> Improvement in misfit:", fx -fx_old
   endif
   
  enddo
@@ -417,10 +420,16 @@ subroutine zoom()
  
    ! if alpha is given outside of the intervalle, we choose the middle of the intervalle
    if (alpha <= alpha_low .or. alpha >= alpha_high .or. alpha <= 0 .or. isnan(alpha)) then
-     alpha = (alpha_low + alpha_high) / 2 
+     if (alpha_low /= 0 .and. alpha_high /= 0) then
+        alpha = exp( (log(alpha_low) + log(alpha_high))/2)
+     else
+        alpha = (alpha_low + alpha_high) / 2 
+      endif
    endif
- 
-   print*, "Zoom: ", alpha, ' (', alpha_low,",",alpha_high,")", fx_low,dfx_low_r,fx_high, dfx_high_r
+
+   if (rank == 0) then
+     print*, "Zoom: ", alpha, ' (', alpha_low,",",alpha_high,")", fx_low,dfx_low_r,fx_high, dfx_high_r
+   endif
    ! update
    call update(x,alpha,r,x_new) 
    call f(x_new, fx_new)
