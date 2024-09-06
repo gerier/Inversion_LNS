@@ -23,7 +23,7 @@ make clean; make
 
 To execute the program:
 ```
-mpirun -np X inversion
+mpirun -np X xinfrasound
 ```
 with `X` the number of processus you may want to use. 
 
@@ -54,6 +54,7 @@ Load specific packages:
 module load gcc/7.3.0 openmpi/gnu/2.0.2.10
 module unload gcc
 ```
+Note : https://www.calmip.univ-toulouse.fr/espace-utilisateurs/doc-technique-olympe/ameliorer-les-performances/compilateurs-et-wrappers-mpi
 
 To compile the program:
 ```
@@ -65,6 +66,7 @@ Edit the file scrit.slurm with the number of processus, email, time of execute, 
 ```
 sbatch script.slurm
 ```
+
 
 # Organisation
 
