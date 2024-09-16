@@ -9,7 +9,7 @@ SRCS := src/main.f90 \
 	src_gradient/compute_kernel_interpolation.f90 \
 	src/computePML.f90 \
 	src/discretisation.f90 \
-	src/forwardproblem.f90 \
+	src_forward/forwardproblem.f90 \
 	src/initialisation.f90 \
 	src/mpi_comm.f90 \
 	src/outputs_lib.f90  \

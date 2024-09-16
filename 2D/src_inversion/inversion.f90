@@ -19,7 +19,7 @@ subroutine optimisation() ! TODO
  implicit none
  integer :: iter
  logical notFound 
- double precision :: dfxdfx_old_r_old, norm2_dfxdfx_old
+ double precision :: dfxdfx_old_r_old, norm2_dfxdfx_old,y_s
  
  count_grad = 0
  count_f = 0
@@ -39,6 +39,9 @@ subroutine optimisation() ! TODO
  iter = 1
  notFound = .False.
 
+ if (type_gradient == 6) then
+    steepest_nbiter_default = mem_lbfgs
+ endif
  
  do while (iter < maxiter .and. (abs(fx-fx_old)>1e-14) )
  
@@ -46,10 +49,18 @@ subroutine optimisation() ! TODO
     print *, "[Iteration ", iter, "]"
   endif
   
-  if (iter <= 5) then  ! compute the steepest descent gradient
+  if (iter <= steepest_nbiter_default) then  ! compute the steepest descent gradient and backtracking step
 
     r(:) = - dfx(:)
     call scalar_product(dfx,r,dfx_r,Nflat) 
+   
+    ! if L-BFGS is chosen, save informations for next iterations
+    if (type_gradient == 6 .and. iter /= 1) then
+      Y_list(iter-1,:) = dfx - dfx_old
+      S_list(iter-1,:) = x - x_old
+      call scalar_product(Y_list(iter-1,:),S_list(iter-1,:),y_s,Nflat)
+      RHO_list(iter-1) = 1 / y_s
+    endif
 
    ! initialise a first step
     if (iter == 1.0d0) then
@@ -61,7 +72,7 @@ subroutine optimisation() ! TODO
     	alpha_start = 1.0d0
     endif
     
-    ! find a step that respects only the Armijo condition
+    ! find a step that respects only the Armijo condition (using backtracking)
     call backtracking()
     if (rank == 0) then
       print *, "Backtracking : ", alpha
@@ -71,18 +82,19 @@ subroutine optimisation() ! TODO
   else ! compute the conjugate gradient
   
     ! use the conjugate gradient
+    ! first, check if descent direction can be applied (test if descent direction will not be equal to infinity)
     call scalar_product(dfx-dfx_old,r_old,dfxdfx_old_r_old,Nflat)
     call scalar_product(dfx-dfx_old,dfx-dfx_old,norm2_dfxdfx_old,Nflat) 
     if (((abs(dfxdfx_old_r_old))<1e-8 .and. (type_gradient>=3 .and. type_gradient<=5)) .or. sqrt(norm2_dfxdfx_old)<1e-15) then ! TODO pas logique <dfx,r> ! .or. dot_product(dfx,r) > 0 )
        r(:) = - dfx(:)
        count_restart = count_restart+1
     else 
-       call conjugateGradient(type_gradient)
+       call get_descent_direction(type_gradient)
     endif
-    call scalar_product(dfx,r,dfx_r,Nflat) ! dfx_r = dot_product(dfx, r)
     
     ! initialise a first step
     ! Nocedal, 2006, eq. 3.60
+    call scalar_product(dfx,r,dfx_r,Nflat)    
     alpha_start = min(1.0d0, 1.01d0 * 2.d0 * (fx - fx_old) / dfx_r)
     if (alpha_start <= 0) then
       print *, "Alpha start < 0 :  we have accepted to increase the mistfit in the previous iteration"
@@ -125,14 +137,15 @@ endsubroutine optimisation
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine conjugateGradient(conj_number)
+subroutine get_descent_direction(conj_number)
   ! Dener A. et al., 2019
-  use parameters, only : dfx, dfx_old, r, r_old,x,x_old,Nflat
+  use parameters, only : dfx, dfx_old, r, r_old,x,x_old,Nflat, mem_lbfgs, RHO_list, S_list, Y_list
   implicit none
-  double precision :: beta,eta,gama,tau
-  integer :: conj_number
-  double precision, dimension(Nflat) :: y,s
-  double precision :: dfx_dfx, dfx_old_dfx_old, dfx_y, y_r_old, dfx_r_old,y_y,y_s, r_old_r_old, dfx_s
+  double precision :: beta,eta,gama,tau,rho
+  integer :: conj_number,i
+  double precision, dimension(Nflat) :: y,s, h0_diag,q
+  double precision :: dfx_dfx, dfx_old_dfx_old, dfx_y, y_r_old, dfx_r_old,y_y,y_s, r_old_r_old, dfx_s,s_q,y_r
+  double precision, dimension(mem_lbfgs) :: a
   
   if (conj_number == 1) then ! Fletcher-Reeves
     !beta =  dot_product(dfx,dfx) / dot_product(dfx_old,dfx_old)
@@ -190,11 +203,43 @@ subroutine conjugateGradient(conj_number)
     beta = dfx_y/y_r_old - y_y/y_s * dfx_s / y_r_old
     beta = max(beta,0.5*dfx_r_old/r_old_r_old)
     r = - dfx + beta * r_old
+    
+    
+   else if (conj_number == 6) then  ! L-BFGS
+    q = dfx 
+    y = dfx - dfx_old
+    s = x - x_old
+    call scalar_product(y,s,y_s,Nflat) 
+    rho = 1 / y_s
+    
+    Y_list = cshift(Y_list, 1, 1)
+    S_list = cshift(S_list, 1, 1)
+    RHO_list = cshift(RHO_list, 1)
+    
+    Y_list(mem_lbfgs,:) = y
+    S_list(mem_lbfgs,:) = s
+    RHO_list(mem_lbfgs) = rho
+    
+    a(:) = 0
+    do i=1,mem_lbfgs
+      call scalar_product(S_list(mem_lbfgs-i+1,:),q,s_q,Nflat) ! 
+      a(mem_lbfgs-i+1) = RHO_list(mem_lbfgs-i+1) * s_q
+      q = q - a(mem_lbfgs-i+1) * Y_list(mem_lbfgs-i+1,:)
+    enddo
+    
+    call scalar_product(S_list(mem_lbfgs,:),Y_list(mem_lbfgs,:),y_s,Nflat) 
+    call scalar_product(Y_list(mem_lbfgs,:),Y_list(mem_lbfgs,:),y_y,Nflat) 
+    h0_diag = y_s / y_y
+    r = h0_diag * q 
+    do i=1,mem_lbfgs
+      call scalar_product(Y_list(i,:),r,y_r,Nflat) ! 
+      beta = RHO_list(i) * y_r
+      r = r + S_list(i,:) * (a(i)-beta)
+    enddo
+    r = -r
   endif
   
-  
- 
-endsubroutine conjugateGradient
+endsubroutine get_descent_direction
 
 
 
@@ -229,7 +274,7 @@ subroutine line_search()
      !call get_alpha_low_high(alpha_prec, alpha, alpha_low, alpha_high)
      alpha_high = alpha
      alpha_low = alpha_prec
-     call zoom()  ! TODO
+     call zoom()  
      stop_cond = .True.
      
    else !  Armijo condition satisfied
@@ -246,14 +291,16 @@ subroutine line_search()
           !call get_alpha_low_high(alpha_prec, alpha, alpha_low, alpha_high)
           alpha_high = alpha_prec
           alpha_low = alpha
-          call zoom()  ! TODO
+          call zoom()  
           stop_cond = .True.
        else 
           ! in that case, look for a larger alpha (than alpha_prec) respecting at least the Armijo condition 
           alpha_prec = alpha
           fx_prec = fx_new
           alpha = (alpha_max+alpha)/2
+          
           if (abs(alpha - alpha_max) < 1e-6) then
+            ! if alpha is very close to alpha_max, then accept alpha 
             stop_cond = .True.
           endif ! alpha == alpha_max
           
@@ -350,8 +397,10 @@ implicit none
     enddo
      
     if (iter == maxiter_backtracking) then
+        ! Backtracking fails to find alpha satisfying Armijo condition 
         print *, "ERROR : No acceptable step find in backtracking"
         print *, "iter = ", iter
+        ! Select the alpha given the best results (the smallest cost function)
         call bestAlpha(alpha_hist,size_alpha_hist)
         print *, "Choose alpha = ", alpha
     endif
@@ -407,22 +456,23 @@ subroutine zoom()
    
    ! interpolate alpha as the minimum of a cubic or quadratic function passing though alpha_low and alpha_high
    if (iter == 0) then
+     ! to start, choose alpha as the minimum of the quadratic function interpolated the curve, between alpha low and alpha_high 
      call scalar_product(dfx_low,r,dfx_low_r, Nflat)
-     !call quadratic(alpha_low,fx_low,dot_product(dfx_low,r),alpha_high, fx_high)
      call quadratic(alpha_low,fx_low,dfx_low_r,alpha_high, fx_high)
    else
+     ! then, choose alpha as the minimum of the cubic function interpolated the curve, between alpha low and alpha_high 
      call scalar_product(dfx_low,r,dfx_low_r, Nflat)
      call scalar_product(dfx_high,r,dfx_high_r, Nflat)
-     ! call cubic(alpha_low,fx_low,dot_product(dfx_low,r),alpha_high, fx_high,alpha_old,fx_old)
-     !call cubic(alpha_low,fx_low,dot_product(dfx_low,r),alpha_high, fx_high,dot_product(dfx_high,r))
      call cubic(alpha_low,fx_low,dfx_low_r,alpha_high, fx_high,dfx_high_r)
    endif
  
    ! if alpha is given outside of the intervalle, we choose the middle of the intervalle
    if (alpha <= alpha_low .or. alpha >= alpha_high .or. alpha <= 0 .or. isnan(alpha)) then
      if (alpha_low /= 0 .and. alpha_high /= 0) then
+        ! to accelerate, if alpha_low and alpha_high > 0, then use the middle point between the logarithm of alpha_low and alpha_high 
         alpha = exp( (log(alpha_low) + log(alpha_high))/2)
      else
+        ! choose the middle point between alpha_low and alpha_high
         alpha = (alpha_low + alpha_high) / 2 
       endif
    endif
@@ -430,6 +480,7 @@ subroutine zoom()
    if (rank == 0) then
      print*, "Zoom: ", alpha, ' (', alpha_low,",",alpha_high,")", fx_low,dfx_low_r,fx_high, dfx_high_r
    endif
+   
    ! update
    call update(x,alpha,r,x_new) 
    call f(x_new, fx_new)
@@ -437,26 +488,19 @@ subroutine zoom()
    call df(x_new,dfx_new)
    call scalar_product(dfx_new,r,dfx_new_r, Nflat)
    
+   ! init array to records the tested step alpha
    alpha_hist(iter,1) = alpha
    alpha_hist(iter,2) = fx_new
    size_alpha_hist = size_alpha_hist + 1 
 
-if (rank == 0) then
-print *, "step 0"
-endif
 
    if (wolfe1(alpha,fx,dfx_r,fx_new)) then ! Armijo condition
 
-if (rank == 0) then
-print *, "step 1"
-endif
 
      if (wolfe2()) then ! Curvature condition
        stop_cond = .True.
      else
-if (rank == 0) then
-print *, "step 2"
-endif
+
        if (dfx_new_r * (alpha_high - alpha_low) >=0) then
          ! in that case, phi(alpha) = f(x+alpha*r) is increasing
          ! we want to look for alpha_st in [alpha_low, alpha] to decrease more f(x+alpha_st*r)
@@ -464,9 +508,7 @@ endif
          x_high = x_low
          fx_high = fx_low
          dfx_high = dfx_low
-if (rank == 0) then
-print *, "step 3"
-endif
+
        endif
      
        ! if the previous condition was satisfied:
@@ -480,42 +522,26 @@ endif
        x_low = x_new
        fx_low = fx_new
        dfx_low = dfx_new
-if (rank == 0) then
-print *, "step 4"
-endif
+
 
        if (abs(alpha_low - alpha_high)<1e-15) then
           ! if alpha_high too close of alpha_low, stop the algorithm and select an apha respecting the Armijo condition 
           call bestAlpha(alpha_hist,size_alpha_hist)
           call df(x_new,dfx_new) 
           stop_cond = .True.
-if (rank == 0) then
-print *, "step 5"
-endif
        endif
    
-       
-       !if (alpha_high < alpha_low) then
-       !  ! reorder alpha_high and alph_low
-       !  call permut(alpha_high, alpha_low, x_high, x_low, fx_high, fx_low, dfx_high, dfx_low)
-       !  stop_cond = .True.
-       !end if 
-     
+
        !if (alpha_low < 1e-16) then
        ! ! if alpha_low is too small, stop the algorithm and select an alpha respecting the Armijo condition
        ! call bestAlpha(alpha_hist,size_alpha_hist)
        ! stop_cond = .True.
        !endif
-if (rank == 0) then
-print *, "step 6"
-endif
+
      endif ! Wolfe2
      
    else
 
-if (rank == 0) then
-print *, "step 7"
-endif
        ! in that case, we can reduce the intervalle by decreasing the upper bound
        alpha_high = alpha
        x_high = x_new
@@ -524,9 +550,6 @@ endif
       
        
        if (abs(alpha_low - alpha_high)<1e-15) then
-if (rank == 0) then
-print *, "step 8"
-endif
          ! if alpha_high too close of alpha_low, stop the algorithm and select the best apha from the tested ones
          call bestAlpha(alpha_hist,size_alpha_hist)
          call df(x_new,dfx_new) 
@@ -541,65 +564,28 @@ endif
 
 endsubroutine zoom
 
-subroutine permut(alpha_high, alpha_low, x_high, x_low, fx_high, fx_low, dfx_high, dfx_low)
-
- use parameters, only : Nflat
- implicit none
- double precision :: alpha_high, alpha_low, fx_high, fx_low
- double precision, dimension(Nflat) :: x_high, x_low, dfx_high, dfx_low
-
- double precision :: aux
- double precision, dimension(Nflat) :: tab_aux
- 
- aux = alpha_high
- alpha_high = alpha_low
- alpha_low = aux
- 
- aux = fx_high
- fx_high = fx_low
- fx_low = aux
-
- tab_aux(:) = x_high(:)
- x_high(:) = x_low(:)
- x_low(:) = tab_aux(:)
- 
- tab_aux(:) = dfx_high(:)
- dfx_high(:) = dfx_low(:)
- dfx_low(:) = tab_aux(:)
-
-endsubroutine permut
-
 
 subroutine gaussian_filter(u,mask_dim)
   use parameters, only : NX_LOCAL, NY_LOCAL
   integer :: mask_dim
   double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2), intent(inout) :: u
-  double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2) :: u_old
+  double precision, dimension(-1:NY_LOCAL+2) :: u_old
   double precision:: u_aux
-  integer :: i,j
+  integer :: j
   
-  double precision, dimension(5,5) :: mask_2d = reshape( (/1., 4., 6., 4., 1., &
-                                                        4.,16.,25.,16., 4., &
-                                                        6.,25.,40.,25., 6., &
-                                                        4.,16.,25.,16., 4., &
-                                                        1., 4., 6., 4., 1./), (/5,5/))  /264
-                                                        
+ ! gaussian window (defined as a gaussian kernel image)                                       
  double precision, dimension(5) :: mask_1d = (/1., 4., 6., 4., 1./) /16     
                                                   
-  if (mask_dim == 2) then
-   u_old(:,:) = u(:,:) 
-   do j=1,NY_LOCAL
-    do i=1,NX_LOCAL
-      u(i,j) = sum(u_old(i-2:i+2,j-2:j+2) * mask_2d(:,:))
-    enddo
-   enddo 
-  elseif (mask_dim == 1) then
-    u_old(1,:) = u(1,:)
-    do j=1,NY_LOCAL
-      u_aux = sum(u_old(1,j-2:j+2) * mask_1d(:))
+  if (mask_dim == 1) then
+    u_old(:) = u(1,:)
+    do j=3,NY_LOCAL-2
+      u_aux = sum(u_old(j-2:j+2) * mask_1d(:))
       u(:,j) = u_aux
     enddo
-    
+    u(:,1) = u(1,3)
+    u(:,2) = u(1,3) 
+    u(:,NY_LOCAL-1) = u(1,NY_LOCAL-2)
+    u(:,NY_LOCAL) = u(1,NY_LOCAL-2)
   endif
   
 endsubroutine gaussian_filter
@@ -609,24 +595,20 @@ subroutine mean_filter(u,mask_dim)
   use parameters, only : NX_LOCAL, NY_LOCAL
   integer :: mask_dim
   double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2), intent(inout) :: u
-  double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2) :: u_old
+  double precision, dimension(-1:NY_LOCAL+2) :: u_old
   double precision:: u_aux
-  integer :: i,j
+  integer :: j
                                                                        
-  if (mask_dim == 2) then
-   u_old(:,:) = u(:,:) 
-   do j=1,NY_LOCAL
-    do i=1,NX_LOCAL
-      u(i,j) = sum(u_old(i-2:i+2,j-2:j+2))/25
-    enddo
-   enddo 
-  elseif (mask_dim == 1) then
-    u_old(1,:) = u(1,:)
-    do j=1,NY_LOCAL
-      u_aux = sum(u_old(1,j-2:j+2)) /5
+  if (mask_dim == 1) then
+    u_old(:) = u(1,:)
+    do j=3,NY_LOCAL-2
+      u_aux = sum(u_old(j-2:j+2)) /5
       u(:,j) = u_aux
     enddo
-    
+    u(:,1) = u(1,3)
+    u(:,2) = u(1,3) 
+    u(:,NY_LOCAL-1) = u(1,NY_LOCAL-2)
+    u(:,NY_LOCAL) = u(1,NY_LOCAL-2)
   endif
   
 endsubroutine mean_filter
@@ -636,17 +618,18 @@ subroutine median_filter(u,mask_dim)
   integer :: mask_dim
   double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2), intent(inout) :: u
   double precision, dimension(-1:NY_LOCAL+2) :: u_old
-  integer :: i,j
-  double precision, dimension(25) :: imageM
+  integer :: j
   double precision, dimension(9) :: imageA
                                                                        
   if (mask_dim == 1) then
     u_old(:) = u(1,:)
-    do j=2,NY_LOCAL-2
+    do j=3,NY_LOCAL-2
       imageA = u_old(j-4:j+4)
       call sort(imageA,9)
       u(:,j) = imageA(4)
     enddo
+    u(:,1) = u(1,3)
+    u(:,2) = u(1,3) 
     u(:,NY_LOCAL-1) = u(1,NY_LOCAL-2)
     u(:,NY_LOCAL) = u(1,NY_LOCAL-2)
     
@@ -679,16 +662,17 @@ subroutine smoothing(x) ! TODO
   implicit none
   double precision, dimension(Nflat), intent(inout) :: x
   call flatmodel2priormodel(x)
+  ! apply a mean, gaussian or median filter to smooth the solution x 
   
   if (type_smoothing == 1) then
   ! mean filter is applied
-    call mean_filter(rho0_prior,2)
-    call mean_filter(p0_prior,2)
+    call mean_filter(rho0_prior,1)
+    call mean_filter(p0_prior,1)
     call mean_filter(windx_prior,1)
   elseif (type_smoothing == 2) then
   ! gaussian filter is applied
-    call gaussian_filter(rho0_prior,2)
-    call gaussian_filter(p0_prior,2)
+    call gaussian_filter(rho0_prior,1)
+    call gaussian_filter(p0_prior,1)
     call gaussian_filter(windx_prior,1)
   elseif (type_smoothing == 3) then
   ! gaussian filter is applied
@@ -712,30 +696,25 @@ subroutine update(x,alpha,p,x_new)
  implicit none
  double precision, dimension(Nflat) :: x, p, x_new
  double precision :: alpha 
+ ! update the current solution witht the descent direction and the line search step 
  x_new = x + alpha * p
  call MPI_BARRIER(MPI_COMM_WORLD, code)
+ 
+ ! smooth the solution because of artefacts due to on-linearity at the source and at the adjoint sources
  call smoothing(x_new)
  call MPI_BARRIER(MPI_COMM_WORLD, code)
 endsubroutine update
 
 
-
-subroutine quadratic_2(xa,fxa,dfxa,xb,fxb)
- use parameters, only : alpha, Nflat    ! TODO define in parameters
- implicit none
- ! Nocedal, 2006, p.79 eq 3.58
- double precision :: fxa,fxb
- double precision :: a,b
- double precision :: xa,xb,dfxa
-
- a = fxb-fxa-dfxa*xb 
- b = dfxa*xb**2
- alpha = -b/(2*a)
-endsubroutine quadratic_2
-
 subroutine quadratic(xa,fxa,dfxa,xb,fxb)
- use parameters, only : alpha, Nflat    ! TODO define in parameters
+ ! xa   : point a
+ ! fxa  : f evaluated in a
+ ! dfxa : gradient of f evaluated in a
+ ! xb   : point b
+ ! fxb  : f evaluated in b
+ use parameters, only : alpha
  implicit none
+ ! The curve between hthe two points is a quadratic interpretation and return the minimum value "alpha"
  ! Nocedal, 2006, p.79 eq 3.58
  double precision :: fxa,fxb
  double precision :: xa,xb,dfxa
@@ -746,35 +725,16 @@ subroutine quadratic(xa,fxa,dfxa,xb,fxb)
 endsubroutine quadratic
 
 
-subroutine cubic_2(xa,fa,fpa,xb,fb,xc,fc)
- use parameters, only : alpha, Nflat    ! TODO define in parameters
- implicit none
- ! https://github.com/scipy/scipy/blob/v1.11.3/scipy/optimize/_linesearch.py#L183-L322, function _cubicmin
- double precision :: fa,fb,fc
- double precision :: denom, radical
- double precision :: xa,xb,xc,fpa
- double precision, dimension(2,2) :: d1
- double precision, dimension(2) :: d2, d3
-
- denom = (xb-xa)**2 * (xc-xa)**2 * (xb-xc)
-
- d1(1,1) = (xc-xa)**2
- d1(1,2) = (xa-xb)**2
- d1(2,1) = (xa-xc)**3
- d1(2,2) = (xb-xa)**3 
-
- d2(1) = fb - fa - fpa * (xb-xa)
- d2(2) = fc - fa - fpa * (xc-xa)
-
- d3 = matmul(d1,d2)
- d3(:) = d3(:) / denom 
- radical = d3(2)*d3(2)-3*d3(1)*fpa
- alpha = xa + (-d3(2) + sqrt(radical)) / (3*d3(1))
-endsubroutine cubic_2
-
 subroutine cubic(xa,fa,fpa,xb,fb,fpb)
- use parameters, only : alpha, Nflat    ! TODO define in parameters
+ ! xa  : point a
+ ! fxa : f evaluated in a
+ ! fpa : gradient of f evaluated in a
+ ! xb  : point b
+ ! fxb : f evaluated in b
+ ! fpb : gradient of f evaluated in b
+ use parameters, only : alpha   
  implicit none
+ ! The curve between hthe two points is a cubic interpretation and return the minimum value "alpha"
  ! Nocedal, 2006, p.79 eq 3.59
  double precision :: fa,fb
  double precision :: denom, num, d1, d2

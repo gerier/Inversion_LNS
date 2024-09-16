@@ -77,18 +77,21 @@ program main
 !!                       PML INIT                          !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+  !  define the parameters for the Perfectly Match Layers (PML)
   call computePML()
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!                Background domain                       !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+ ! define the matrix of density, pressure and wind for the true model and the a priori model
  call init_backgrounds()
  
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!          source / receivers INFORMATION          !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+ ! define the position of the source and receivers
   call init_source_recvrs()
         
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -118,10 +121,11 @@ program main
  !!! FORWARD PROPAGATION
  if (method == 1) then
  
-   ! init
+   ! initialise all the parameters to solve the forward problem (p',rho',vx',vy' and PML memory variables)
    call reset_forward()
 
    ! option to save normalised image (on all the snapshots)
+   ! if save_normimage_overtime = 1 : save snapshots normalised by the maximum alue of the waveform during all the propagation
    !! BE AWARE: this option needs two simulations: one to identify the maximum value, and a second one to save the snapshots 
    if (save_normimage_overtime == 1) then
      save_sismos = .False.
@@ -129,8 +133,11 @@ program main
      save_normimage_overtime = 0
    endif
     
+   ! initialise all the parameters to solve the forward problem (p',rho',vx',vy' and PML memory variables)
    call reset_forward()
+   ! parameter to save images and pressure records
    save_sismos = .True.
+   ! solve the forward problem
    call forwardproblem(p0_true, rho0_true, windx_true, windy_true,  1, NSTEP, 2) 
    
    
@@ -140,8 +147,11 @@ program main
    ! TODO add an option to load seismograms directly
    
    ! get an observation (for now, you can only create observations)
+   ! initialise all the parameters to solve the forward problem (p',rho',vx',vy' and PML memory variables)
    call reset_forward()
+   ! parameter to save images and pressure records
    save_sismos = .True.
+   ! solve the forward problem
    call forwardproblem(p0_true, rho0_true, windx_true, windy_true,  1, NSTEP, 2) 
 
    ! get normalisation informations from observations
@@ -150,7 +160,7 @@ program main
    sispressure_true(:,:) = sispressure(:,:) 
    
    do irec=1,NREC
-    norm_pressure_true_per_rec(irec) = sum(sispressure_true(:,irec)**2)
+    normsq_pressure_true_per_rec(irec) = sum(sispressure_true(:,irec)**2)
    enddo
      
    ! compute kernel
@@ -165,35 +175,38 @@ program main
      ! TODO add an option to load seismograms directly
    
      ! get an observation (for now, you can only create observations)
+     ! initialise all the parameters to solve the forward problem (p',rho',vx',vy' and PML memory variables)
      call reset_forward()
+     ! parameter to save images and pressure records
      save_sismos = .True.
+     ! solve the forward problem
      call forwardproblem(p0_true, rho0_true, windx_true, windy_true,  1, NSTEP, 2) 
 
      ! get normalisation informations from observations
      sispressure_true(:,:) = sispressure(:,:) 
      do irec=1,NREC
-       norm_pressure_true_per_rec(irec) = sum(sispressure_true(:,irec)**2)
+       normsq_pressure_true_per_rec(irec) = sum(sispressure_true(:,irec)**2)
      enddo
 
      ! atmospheric model is saved in a vector form for inverse problem
      call priormodel2flatmodel(m0)
    
-     call MPI_ALLREDUCE( sum(m0(1:NY_LOCAL)**2), regul_term_rho0_true, 1,MPI_DOUBLE_PRECISION,&
+     call MPI_ALLREDUCE( sum(m0(1:NY_LOCAL)**2), regul_term_rho0_prior, 1,MPI_DOUBLE_PRECISION,&
                   MPI_SUM,MPI_COMM_WORLD, code)
-     call MPI_ALLREDUCE( sum(m0(NY_LOCAL+1:2*NY_LOCAL)**2),regul_term_p0_true,1,MPI_DOUBLE_PRECISION,&
+     call MPI_ALLREDUCE( sum(m0(NY_LOCAL+1:2*NY_LOCAL)**2),regul_term_p0_prior,1,MPI_DOUBLE_PRECISION,&
                   MPI_SUM,MPI_COMM_WORLD,code)
-     call MPI_ALLREDUCE( sum(m0(2*NY_LOCAL+1:Nflat)**2), regul_term_windx_true,1, MPI_DOUBLE_PRECISION, &
+     call MPI_ALLREDUCE( sum(m0(2*NY_LOCAL+1:Nflat)**2), regul_term_windx_prior,1, MPI_DOUBLE_PRECISION, &
                   MPI_SUM,MPI_COMM_WORLD, code)
-     if (regul_term_windx_true < TINYVAL) then
-        regul_term_windx_true = 1.0
+     if (regul_term_windx_prior < TINYVAL) then
+        regul_term_windx_prior = 1.0
      endif
 
       
      ! init for regularisation term
-     if (type_regul_term > 0) then
-       call init_factor_regul()
-       call get_norm_apriori()
-     endif 
+     !if (type_regul_term > 0) then
+     !  call init_factor_regul()
+     !  call get_norm_apriori()
+     !endif 
      
      ! resolution of the inverse problem
      call optimisation()

@@ -525,7 +525,7 @@ endsubroutine compute_adjoint
 
 subroutine compute_adjoint_source(adjoint_source_term, it_step)
 
- use parameters, only : sispressure_true, sispressure_prior, norm_pressure_true_per_rec,t0,DELTAT,PI, &
+ use parameters, only : sispressure_true, sispressure_prior, normsq_pressure_true_per_rec,t0,DELTAT,PI, &
                         ix_rec, iy_rec, NREC, NSTEP, TINYVAL,&
                         i_rank, j_rank,NX_LOCAL,NY_LOCAL, offset_i, offset_j
  
@@ -554,8 +554,8 @@ subroutine compute_adjoint_source(adjoint_source_term, it_step)
          adjoint_source_term(i,j) = coef_damping * diff
        endif
      
-       if (norm_pressure_true_per_rec(irec) > TINYVAL .and. abs(diff) > TINYVAL) then
-         adjoint_source_term(i,j) = adjoint_source_term(i,j) / norm_pressure_true_per_rec(irec)    
+       if (normsq_pressure_true_per_rec(irec) > TINYVAL .and. abs(diff) > TINYVAL) then
+         adjoint_source_term(i,j) = adjoint_source_term(i,j) / normsq_pressure_true_per_rec(irec)    
        endif
      endif
        

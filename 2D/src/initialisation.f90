@@ -384,16 +384,16 @@ subroutine get_norm_apriori()
  use parameters
  implicit none
  
-  call MPI_ALLREDUCE(sum(  p0_prior(:,:)**2), norm_p0_prior, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
-  call MPI_ALLREDUCE(sum(  rho0_prior(:,:)**2), norm_rho0_prior, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
-  call MPI_ALLREDUCE(sum(  windx_prior(:,:)**2), norm_windx_prior, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
-  call MPI_ALLREDUCE(sum(  windy_prior(1,:)**2), norm_windy_prior, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
+  call MPI_ALLREDUCE(sum(  p0_prior(:,:)**2), normsq_p0_prior, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
+  call MPI_ALLREDUCE(sum(  rho0_prior(:,:)**2), normsq_rho0_prior, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
+  call MPI_ALLREDUCE(sum(  windx_prior(:,:)**2), normsq_windx_prior, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
+  call MPI_ALLREDUCE(sum(  windy_prior(1,:)**2), normsq_windy_prior, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
      
-   if (norm_windx_prior == 0.0d0) then  
-     norm_windx_prior = 1.0d0
+   if (normsq_windx_prior == 0.0d0) then  
+     normsq_windx_prior = 1.0d0
    endif
-   if (norm_windy_prior == 0.0d0) then  
-     norm_windy_prior = 0 
+   if (normsq_windy_prior == 0.0d0) then  
+     normsq_windy_prior = 0 
    endif
    
 endsubroutine get_norm_apriori

@@ -7,7 +7,7 @@ implicit none
  integer :: irec
  double precision, dimension(NREC) :: fm_local_per_rec
  double precision :: regul_term_p0, regul_term_rho0,regul_term_windx
- double precision, dimension(Nflat) :: norm2_m, norm2_mm0
+ double precision, dimension(Nflat) :: normsq_m, normsq_mm0
  fm_local_per_rec(:) = 0.0d0
 
  factor_regul_SRdist(:) = 1.0
@@ -22,9 +22,9 @@ implicit none
  !
  do irec=1,NREC
    if (i_rank == (ix_rec(irec)-1)/NX_LOCAL .and. j_rank == (iy_rec(irec)-1)/NY_LOCAL) then
-   if ( norm_pressure_true_per_rec(irec) > TINYVAL) then
+   if ( normsq_pressure_true_per_rec(irec) > TINYVAL) then
    fm_local_per_rec(irec) = sum((sispressure_prior(:,irec) - sispressure_true(:,irec))**2) &
-                    / norm_pressure_true_per_rec(irec) 
+                    / normsq_pressure_true_per_rec(irec) 
    endif
    endif
 enddo
@@ -37,21 +37,21 @@ enddo
  count_f = count_f + 1
  
  if (type_regul_term == 1) then
-norm2_m(:) = 0.0d0
+normsq_m(:) = 0.0d0
 
-  norm2_mm0= factor_regul_SRdist&
+  normsq_mm0= factor_regul_SRdist&
   *(m-m0)**2 
   
-  call MPI_ALLREDUCE( sum(norm2_mm0(1:NY_LOCAL)), regul_term_rho0, 1, MPI_DOUBLE_PRECISION,&
+  call MPI_ALLREDUCE( sum(normsq_mm0(1:NY_LOCAL)), regul_term_rho0, 1, MPI_DOUBLE_PRECISION,&
                                                                                     MPI_SUM,  MPI_COMM_WORLD, code)
-  call MPI_ALLREDUCE( sum(norm2_mm0(NY_LOCAL+1:2*NY_LOCAL)), regul_term_p0,1,MPI_DOUBLE_PRECISION,&
+  call MPI_ALLREDUCE( sum(normsq_mm0(NY_LOCAL+1:2*NY_LOCAL)), regul_term_p0,1,MPI_DOUBLE_PRECISION,&
                                                                                     MPI_SUM, MPI_COMM_WORLD,code)
-  call MPI_ALLREDUCE( sum(norm2_mm0(2*NY_LOCAL+1:Nflat)), regul_term_windx, 1, MPI_DOUBLE_PRECISION, &
+  call MPI_ALLREDUCE( sum(normsq_mm0(2*NY_LOCAL+1:Nflat)), regul_term_windx, 1, MPI_DOUBLE_PRECISION, &
                                                                                     MPI_SUM,  MPI_COMM_WORLD, code)
                                                                                     
   
   fm = fm + regul_weight * 0.5d0 * &
-         (regul_term_p0/regul_term_p0_true + regul_term_rho0/regul_term_rho0_true + regul_term_windx/regul_term_windx_true)
+         (regul_term_p0/regul_term_p0_prior + regul_term_rho0/regul_term_rho0_prior + regul_term_windx/regul_term_windx_prior)
  
 
  else
@@ -89,9 +89,9 @@ ONE_OVER_DXDY = 1 / DELTAX**2 / DELTAY**2
  
 
     reg_grad(:) = 0.0d0
-    reg_grad(1:NY_LOCAL) = (m(1:NY_LOCAL) - m0(1:NY_LOCAL)) / regul_term_rho0_true
-    reg_grad(NY_LOCAL+1:2*NY_LOCAL) = (m(NY_LOCAL+1:2*NY_LOCAL) - m0(NY_LOCAL+1:2*NY_LOCAL)) / regul_term_p0_true
-    reg_grad(2*NY_LOCAL+1:3*NY_LOCAL) = (m(2*NY_LOCAL+1:3*NY_LOCAL) - m0(2*NY_LOCAL+1:3*NY_LOCAL)) / regul_term_windx_true
+    reg_grad(1:NY_LOCAL) = (m(1:NY_LOCAL) - m0(1:NY_LOCAL)) / regul_term_rho0_prior
+    reg_grad(NY_LOCAL+1:2*NY_LOCAL) = (m(NY_LOCAL+1:2*NY_LOCAL) - m0(NY_LOCAL+1:2*NY_LOCAL)) / regul_term_p0_prior
+    reg_grad(2*NY_LOCAL+1:3*NY_LOCAL) = (m(2*NY_LOCAL+1:3*NY_LOCAL) - m0(2*NY_LOCAL+1:3*NY_LOCAL)) / regul_term_windx_prior
 
    flat_grad = flat_grad + 0.5 * regul_weight * reg_grad * factor_regul_SRdist
    
@@ -376,11 +376,9 @@ endsubroutine flatmodel2priormodel
 subroutine priormodel2flatmodel(flat_model)
 
 use parameters, only : NX_LOCAL, NY_LOCAL, Nflat, &
-                       scale_model, rho0_prior, c0_prior, p0_prior, windx_prior, parametrisation,rank,m1
+                       scale_model, rho0_prior, c0_prior, p0_prior, windx_prior, parametrisation,m1
 implicit none
 double precision, dimension(Nflat):: flat_model
-integer :: j
-
  
   if (parametrisation == 1) then
   ! density, wind, velocity

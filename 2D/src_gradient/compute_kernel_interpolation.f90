@@ -206,7 +206,7 @@ subroutine compute_kernel_iter(rho0, p0, windx, windy, rhop, pressure, vx, vy, r
               value_dvx_dt, value_dvy_dt, it_time)
 
 
-  use parameters, only :  K_rho0, K_p0, K_windx, K_windy, gamma_chimie,  &
+  use parameters, only :  K_rho0, K_p0, K_windx, gamma_chimie,  &
                           DELTAT, NX, NY, NSTEP,   &
                           NINE_OVER_8_DELTAX,ONE_OVER_24_DELTAX,    &
                           NINE_OVER_8_DELTAY,ONE_OVER_24_DELTAY,    &
@@ -236,7 +236,7 @@ subroutine compute_kernel_iter(rho0, p0, windx, windy, rhop, pressure, vx, vy, r
       value_dvx_dx,     value_dvx_dy,     &
       value_dvy_dx,     value_dvy_dy,     &
       value_dvax_dx,    value_dvax_dy,    &
-      value_dvay_dx,    value_dvay_dy,    &
+      value_dvay_dx,                      &
       value_dwindx_dx,  value_dwindx_dy,  &
       value_dwindy_dx,  value_dwindy_dy,  &
       value_vax_windx_dvx_dx,             &
@@ -249,21 +249,17 @@ subroutine compute_kernel_iter(rho0, p0, windx, windy, rhop, pressure, vx, vy, r
       value_vay_vy_dwindy_dy
 
   double precision ::   &
-      value_drhoarhop_dx, value_drhoarhop_dy, &
+      value_drhoarhop_dx, &
       value_drhop_dx,     value_drhop_dy,     &
       value_drho0_dx,     value_drho0_dy,     &
       value_drhoa_dx,     value_drhoa_dy,     &
-      value_dgammapap_dx,      value_dgammapap_dy,      &
-      value_dp_dx,        value_dp_dy,        &
+      value_dgammapap_dx,                     &
+      value_dp_dx,                            &
       value_dpa_dx,       value_dpa_dy,       &
       value_vx_dvax_dx,                       &
       value_vy_dvay_dx,                       &
-      value_vx_dvax_dy,                       &
-      value_vy_dvay_dy,                       &
       value_vax_dvx_dx,                    &
       value_vay_dvy_dx,                    &
-      value_vax_dvx_dy,                    &
-      value_vay_dvy_dy,                    &
       value_dv,                               &
       value_dwind,                            &
       value_windx_drhop_dx,                   &
@@ -271,47 +267,38 @@ subroutine compute_kernel_iter(rho0, p0, windx, windy, rhop, pressure, vx, vy, r
       value_vx_drho0_dx,                      &
       value_vy_drho0_dy,                      &
       value_wind_dvax,                        &
-      value_wind_dvay,                        &
-      value_v_dvax,                           &
-      value_v_dvay 
+      value_v_dvax
       
 
   double precision :: &
-    rho0_half_x,         rho0_half_y,         &
-    rhoa_half_x,         rhoa_half_y,         &
-    rhop_half_x,         rhop_half_y,         &
-    pa_half_x,           pa_half_y,           &
+    rho0_half_x,                  &
+    rhoa_half_x,                  &
+    rhop_half_x,                  &
+    pa_half_x,                    &
     windx_half_x,        windy_half_y,        &
     vax_half_x,          vay_half_y,          &
     vx_half_x,           vy_half_y,           &
-    windx_half_x_half_y, windy_half_x_half_y, &
-    vax_half_x_half_y,   vay_half_x_half_y,   &
-    vx_half_x_half_y,    vy_half_x_half_y,    &
+    windy_half_x_half_y, &
+    vay_half_x_half_y,   &
+    vy_half_x_half_y,    &
     vax_dvx_dt_half_x, vay_dvy_dt_half_y,     &
     value_dvxvax_dx,   value_dvxvax_dy,       &
     value_dvyvay_dx,   value_dvyvay_dy,       &
-    value_dvx_dx_half_x_half_y,               &
     value_dvy_dy_half_x_half_y,               &
-    value_dwindx_dx_half_x_half_y,            &
     value_dwindy_dy_half_x_half_y
     
 
    double precision :: & 
        value_dwindx_dy_next, value_dwindx_dy_prec,          &
        value_dwindy_dx_next, value_dwindy_dx_prec,          &
-       value_dwindx_dx_next, value_dwindx_dx_prec,          &
        value_dwindy_dy_next, value_dwindy_dy_prec,          &
        value_dvx_dy_next,    value_dvx_dy_prec,             &
        value_dvy_dx_next,    value_dvy_dx_prec,             &
-       value_dvx_dx_next,    value_dvx_dx_prec,             &
        value_dvy_dy_next,    value_dvy_dy_prec,             &
-       value_dvax_dy_next,   value_dvax_dy_prec,            &
        value_dvay_dx_next,   value_dvay_dx_prec,            &
        value_dvyvay_dx_next, value_dvyvay_dx_prec,          &
        value_dvxvax_dy_next, value_dvxvax_dy_prec,          &
-       value_drho0_dx_next,  value_drho0_dx_prec,           &
        value_drho0_dy_next,  value_drho0_dy_prec,           &
-       value_drhop_dx_next,  value_drhop_dx_prec,           &
        value_drhop_dy_next,  value_drhop_dy_prec           
        
   double precision, dimension(-1:NX_LOCAL+2, -1:NY_LOCAL+2) :: &

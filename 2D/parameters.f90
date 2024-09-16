@@ -53,6 +53,9 @@ module parameters
   integer, parameter :: ISOURCE = xsource / DELTAX + 1
   integer, parameter :: JSOURCE = ysource / DELTAY + 1
   ! if type_source == 3 
+  !! Standard deviation to spread the source
+  !! SSF_Sigma should be around 1 wave length
+  !! Attention : the source must have a greater edge distance than SSF_Sigma
   double precision, parameter :: SSF_Sigma = 500.d0
   ! spread the source spatial function
   double precision :: distance2, factor_ssf
@@ -122,8 +125,11 @@ module parameters
  
 ! display information on the screen from time to time
   integer, parameter :: IT_DISPLAY = 200 !NSTEP !  200! NSTEP !200
-  integer :: save_normimage_overtime = 0 ! if method = 1
-
+  ! save_normimage_overtime is a parameter to define the normalisation of the snapshots (only possible with method = 1)
+  !! 1 : if want to save the image normalised over the maxmimum amplitude of the wave over all the propagation 
+  !! 0 : if want to save the image normalised over the maximum amplitude of the current state 
+  integer :: save_normimage_overtime = 0 
+  !! 4 parameters to save the maximum amplitude of the waveform over all the propagation (if method = 1 and save_normimage_overtime = 1)
   double precision :: maxval_image_p = -1.0d0
   double precision :: maxval_image_rho = -1.0d0
   double precision :: maxval_image_vx = -1.0d0
@@ -176,10 +182,10 @@ module parameters
   double precision, dimension(NSTEP,NREC) :: sisvx,sisvy,sispressure,sisrhop
 
   double precision, dimension(NSTEP,NREC) :: sispressure_true, sispressure_prior
-  double precision :: norm_pressure_true
-  double precision, dimension(NREC) :: norm_pressure_true_per_rec
-  double precision :: regul_term_rho0_true,regul_term_p0_true,regul_term_windx_true
-  double precision :: norm_rho0_prior, norm_p0_prior, norm_windx_prior, norm_windy_prior
+  double precision :: normsq_pressure_true
+  double precision, dimension(NREC) :: normsq_pressure_true_per_rec
+  double precision :: regul_term_rho0_prior,regul_term_p0_prior,regul_term_windx_prior
+  double precision :: normsq_rho0_prior, normsq_p0_prior, normsq_windx_prior, normsq_windy_prior
 
   double precision, dimension(-1:NX_LOCAL+2, -1:NY_LOCAL+2) :: K_rho0, K_windx, K_windy, K_p0
 
@@ -322,14 +328,38 @@ module parameters
   integer ihours,iminutes,iseconds,int_tCPU
   double precision :: time_start,time_end,tCPU
 
+
+ integer, parameter :: Nflat = 3*NY_LOCAL 
+
  ! parameters of the inversion
+ !! 1 density, wave speed, wind
+ !! 2 density, pressure, wind
+ !! 3 log density, log celerity, wind
+ !! 4 log density, log pressure, wind
+ !! 5 log celerity, wind, log pressure
  integer, parameter :: parametrisation = 4
- integer, parameter :: type_gradient = 3
+
  ! contains the scaling to have x1,x2,x3 and x4 of the inversion varying in the same way
  ! x1: density, x2: pressure, x3: celerity, x4: windx
  integer, dimension(4), parameter :: scale_model = (/1,1,1,1/)
- integer, parameter :: Nflat = 3*NY_LOCAL 
  
+ ! number of iterations to start with steepest descent direction
+ integer :: steepest_nbiter_default = 5
+
+ ! gradient
+ !! 1 Fletcher Reeves
+ !! 2 Polak Ribieres
+ !! 3 Perry Shanno
+ !! 4 Hager Zhang
+ !! 5 Dai Kou
+ !! 6 L-BFGS
+ integer, parameter :: type_gradient = 6
+ !! parameter for L-Bfgs
+ integer,parameter :: mem_lbfgs = 5
+ double precision, dimension(mem_lbfgs) :: RHO_list
+ double precision, dimension(mem_lbfgs,1:Nflat) :: S_list, Y_list
+ 
+ ! add a term of regularisation of the cost function of the inverse problem
  integer, parameter :: type_regul_term = 1 ! 0. None
                                            ! 1. Norm of current model - a priori model, 
                                            ! 2. (Not implemented - gradient),
@@ -345,11 +375,17 @@ module parameters
  double precision, parameter :: c1 = 0.0001
  double precision, parameter :: c2 = 0.9
   
+ ! define the factor of decreasing for the backtracking algorithm
  double precision, parameter :: rate = 0.8d0
+ ! define the maximum number of iterations in the backtracking algorithm
  integer, parameter :: maxiter_backtracking = 50
 
+ ! define the maximum number of iterations in the main optimisation loop
  integer, parameter :: maxiter = 100
+ ! tolerance on the model x to stop the optimisation algorithm
  double precision :: tol_x = 1e-10
+
+ ! alpha_max is maximum alpha that can be used in the line search procedure
  double precision :: alpha_max = 10
  
  double precision, dimension(1:Nflat) :: m0     ! a priori model
@@ -372,6 +408,10 @@ module parameters
 
  double precision :: dfx_r
  
+ ! after updating model with the descent direction, can smooth the model
+ !! 1 : mean filter (mean filter with a window of 5 elements)
+ !! 2 : gaussian filter (gaussian filter with a window of 5 elements)
+ !! 3 : median filter (median filter with a window of 9 elements)
  integer, parameter :: type_smoothing = 3
 
 end module parameters 
