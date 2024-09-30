@@ -25,12 +25,12 @@ subroutine optimisation() ! TODO
  count_f = 0
  count_restart = 0
  
+
  ! initialisation 
  x(:) = m0(:) 
  call save_info_inversion(0)
  call f(x,fx)
  call df(x,dfx) 
-
 
  x_old(:) = 1e6 * x(:)
  fx_old = 1e10
@@ -94,8 +94,19 @@ subroutine optimisation() ! TODO
     
     ! initialise a first step
     ! Nocedal, 2006, eq. 3.60
-    call scalar_product(dfx,r,dfx_r,Nflat)    
+    call scalar_product(dfx,r,dfx_r,Nflat)
     alpha_start = min(1.0d0, 1.01d0 * 2.d0 * (fx - fx_old) / dfx_r)
+    
+    if (rank == 0) then   
+     print *, "Direction descent x Gradient", dfx_r  
+    endif
+    if (fx - fx_old >= 0) then
+        r = -dfx
+        call scalar_product(dfx,r,dfx_r,Nflat)
+        alpha_start = 1.d0
+        count_restart = count_restart+1
+    endif
+
     if (alpha_start <= 0) then
       print *, "Alpha start < 0 :  we have accepted to increase the mistfit in the previous iteration"
       alpha_start = 1.d0
@@ -330,7 +341,7 @@ end subroutine
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine bestAlpha(alpha_hist,size_alpha_hist) ! Comment faire le array ? ne connait pas la taille 
-use parameters, only : x, r, alpha, x_new, fx_new,maxiter_backtracking,rank
+use parameters, only : x, r, alpha, x_new,fx_new,maxiter_backtracking,rank
 implicit none
 double precision :: f_best,best
 integer :: i 
@@ -340,8 +351,7 @@ double precision, dimension(maxiter_backtracking,2) :: alpha_hist
  ! subroutine to find the alpha that minimise f(x+alpha*r)
  best = alpha_hist(1,1)
  f_best = alpha_hist(1,2)
-
- do i=2,size_alpha_hist 
+ do i=2,size_alpha_hist
    if (alpha_hist(i,2) < f_best) then 
      f_best = alpha_hist(i,2)
      best = alpha_hist(i,1)
@@ -379,9 +389,8 @@ implicit none
         
         ! update
         call update(x, alpha, r, x_new)
-        !print *, x_new(:prod_NXNY_local) <= 0.0
         call f(x_new, fx_new)
-	
+
         alpha_hist(iter,1) = alpha
         alpha_hist(iter,2) = fx_new
         size_alpha_hist = size_alpha_hist + 1 
@@ -417,7 +426,7 @@ endsubroutine backtracking
 subroutine zoom()
  ! algorithm 3.6 p61 from Nocedal, 2006
  use parameters, only : c1, c2, Nflat, alpha, alpha_low, alpha_high,maxiter_backtracking,&
-                       x, fx, dfx_r, r,x_new,fx_new,dfx_new,rank
+                       x,fx,dfx_r,r,x_new,fx_new,dfx_new,rank,TINYVAL,HUGEVAL
  implicit none
  
  double precision, dimension(Nflat) :: x_low, x_high, dfx_low, dfx_high
@@ -435,6 +444,7 @@ subroutine zoom()
  ! initailisation
  stop_cond = .False.
  iter = 1
+ alpha_hist(:,:) = HUGEVAL
  size_alpha_hist=0
  
  call update(x,alpha_low,r, x_low)
@@ -460,10 +470,14 @@ subroutine zoom()
      call scalar_product(dfx_low,r,dfx_low_r, Nflat)
      call quadratic(alpha_low,fx_low,dfx_low_r,alpha_high, fx_high)
    else
-     ! then, choose alpha as the minimum of the cubic function interpolated the curve, between alpha low and alpha_high 
-     call scalar_product(dfx_low,r,dfx_low_r, Nflat)
-     call scalar_product(dfx_high,r,dfx_high_r, Nflat)
-     call cubic(alpha_low,fx_low,dfx_low_r,alpha_high, fx_high,dfx_high_r)
+     if (modulo(iter,10) < TINYVAL) then
+        alpha = (alpha_low + alpha_high)/2
+     else
+      ! then, choose alpha as the minimum of the cubic function interpolated the curve, between alpha low and alpha_high 
+      call scalar_product(dfx_low,r,dfx_low_r, Nflat)
+      call scalar_product(dfx_high,r,dfx_high_r, Nflat)
+      call cubic(alpha_low,fx_low,dfx_low_r,alpha_high, fx_high,dfx_high_r)
+     endif
    endif
  
    ! if alpha is given outside of the intervalle, we choose the middle of the intervalle
@@ -549,7 +563,7 @@ subroutine zoom()
        dfx_high = dfx_new
       
        
-       if (abs(alpha_low - alpha_high)<1e-15) then
+       if (abs(alpha_low - alpha_high)<1e-15 .or. maxiter_backtracking <= size_alpha_hist) then
          ! if alpha_high too close of alpha_low, stop the algorithm and select the best apha from the tested ones
          call bestAlpha(alpha_hist,size_alpha_hist)
          call df(x_new,dfx_new) 
@@ -619,20 +633,16 @@ subroutine median_filter(u,mask_dim)
   double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2), intent(inout) :: u
   double precision, dimension(-1:NY_LOCAL+2) :: u_old
   integer :: j
-  double precision, dimension(9) :: imageA
+  double precision, dimension(5) :: imageA
                                                                        
   if (mask_dim == 1) then
     u_old(:) = u(1,:)
-    do j=3,NY_LOCAL-2
-      imageA = u_old(j-4:j+4)
-      call sort(imageA,9)
-      u(:,j) = imageA(4)
+    do j=1,NY_LOCAL
+      imageA = u_old(j-2:j+2)
+      call sort(imageA,5)
+      u(:,j) = imageA(3)
+   
     enddo
-    u(:,1) = u(1,3)
-    u(:,2) = u(1,3) 
-    u(:,NY_LOCAL-1) = u(1,NY_LOCAL-2)
-    u(:,NY_LOCAL) = u(1,NY_LOCAL-2)
-    
   endif
  
 endsubroutine median_filter
@@ -658,7 +668,8 @@ endsubroutine sort
 
 subroutine smoothing(x) ! TODO
 
-  use parameters, only : Nflat,rho0_prior,p0_prior,windx_prior,NX_LOCAL,NY_LOCAL,type_smoothing
+  use parameters, only : Nflat,c0_prior,rho0_prior,p0_prior,windx_prior,gamma_chimie, &
+                             NX_LOCAL,NY_LOCAL,type_smoothing
   implicit none
   double precision, dimension(Nflat), intent(inout) :: x
   call flatmodel2priormodel(x)
@@ -685,7 +696,8 @@ subroutine smoothing(x) ! TODO
      print *, "ERROR: Type smoothing unknown"
     endif
   endif
-  
+
+  c0_prior(:,:)   = sqrt(gamma_chimie(:,:) * p0_prior(:,:) / rho0_prior(:,:))
   call priormodel2flatmodel(x)
  
 endsubroutine smoothing
@@ -697,12 +709,16 @@ subroutine update(x,alpha,p,x_new)
  double precision, dimension(Nflat) :: x, p, x_new
  double precision :: alpha 
  ! update the current solution witht the descent direction and the line search step 
- x_new = x + alpha * p
- call MPI_BARRIER(MPI_COMM_WORLD, code)
+ if (alpha == 0) then
+   x_new = x
+ else 
+   x_new = x + alpha * p
+   call MPI_BARRIER(MPI_COMM_WORLD, code)
  
- ! smooth the solution because of artefacts due to on-linearity at the source and at the adjoint sources
- call smoothing(x_new)
- call MPI_BARRIER(MPI_COMM_WORLD, code)
+   ! smooth the solution because of artefacts due to on-linearity at the source and at the adjoint sources
+   call smoothing(x_new)
+   call MPI_BARRIER(MPI_COMM_WORLD, code)
+ endif
 endsubroutine update
 
 

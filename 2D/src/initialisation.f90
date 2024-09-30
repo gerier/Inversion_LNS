@@ -210,7 +210,7 @@ double precision :: z, rho,  c, p, grav, w_P, gamma_ratio, &
       
       ! to have a wind profil 
        
-      if (add_wind_profile .and. (j_global > ymin_wind .and. j_global <= ymax_wind)) then 
+      if (add_wind_profile .and. (j_global > jmin_wind .and. j_global <= jmax_wind)) then 
         windx_true(i,j) = exp(- ((j_global-1)*DELTAX/1e3 - mean_gauss_wind)**2 / sigma2_gauss_wind ) * max_wind_factor
       endif
           

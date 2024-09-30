@@ -544,7 +544,6 @@ subroutine compute_adjoint_source(adjoint_source_term, it_step)
   do irec=1,NREC
    
      if (i_rank == (ix_rec(irec)-1)/NX_LOCAL .and. j_rank == (iy_rec(irec)-1)/NY_LOCAL) then
-     
        i = ix_rec(irec) - offset_i 
        j = iy_rec(irec) - offset_j
    

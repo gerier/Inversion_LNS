@@ -292,7 +292,6 @@ implicit none
   !  source_term = factor * exp(- 4 * a*(t-t0)*(t-t0))  
   ! derivative of guassian
   source_term = - 2 * a* (t-t0) *  factor * exp(- a*(t-t0)*(t-t0))   
-
   ! define location of the source  
   if (type_source == 1) then ! plane wave case 
     if (wavefront == 1 .and. i_rank == ISOURCE / NX_LOCAL) then
@@ -797,7 +796,7 @@ implicit none
      call write_seismograms(sisvx,sisvy,sispressure,sisrhop,NSTEP,NREC,DELTAT,t0,type_number)
  endif
    
- if (rank==0) then 
+ if (rank==0 .and. method <= 2) then 
    if (it == NSTEP) then
        print *
        print *,'End of the simulation'

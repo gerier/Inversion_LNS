@@ -10,7 +10,7 @@
 #SBATCH --mail-user=solene.gerier@isae-supaero.fr
 #SBATCH --mail-type=FAIL,END
 #SBATCH --job-name=test
-#SBATCH -o oslurm.%j.out # STDOUT
+##SBATCH -o oslurm.%j.out # STDOUT
 #SBATCH -e eslurm.%j.err # STDERR
 
 export OMP_NUM_THREADS=1

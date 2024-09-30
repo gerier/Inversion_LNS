@@ -9,8 +9,8 @@ module parameters
   integer, parameter :: NY = 500
   integer, parameter :: NX = 200
 
-  integer, parameter :: NPROC_X = 1 !! 20
-  integer, parameter :: NPROC_Y = 4 !! 20
+  integer, parameter :: NPROC_X = 10 !! 20
+  integer, parameter :: NPROC_Y = 10 !! 20
   integer, parameter :: NPROC = NPROC_X * NPROC_Y !! 20
   
   integer, parameter :: NX_LOCAL = NX / NPROC_X
@@ -34,7 +34,7 @@ module parameters
   double precision, parameter :: DELTAT = 0.05d0
 
 ! total number of time steps
-  integer, parameter :: NSTEP = 1000
+  integer, parameter :: NSTEP = 2800
 
 ! parameters for the source
   double precision, parameter :: f0 = 0.1d0
@@ -48,8 +48,8 @@ module parameters
   ! if type_source == 1 
   integer, parameter :: wavefront = 2 ! 1. Wavefront in x direction, 2. Wavefront in y direction
   ! if type_source == 1,2 or 3
-  double precision, parameter :: xsource = 10000.d0
-  double precision, parameter :: ysource = 20000.d0
+  double precision, parameter :: xsource = 2000.d0
+  double precision, parameter :: ysource = 300.d0
   integer, parameter :: ISOURCE = xsource / DELTAX + 1
   integer, parameter :: JSOURCE = ysource / DELTAY + 1
   ! if type_source == 3 
@@ -89,16 +89,19 @@ module parameters
   !!!!   Type=2, x_center, y_center, circle radius, None, factor on density, factor on celerity 
   double precision, dimension(NPERTURB_MODEL,7), parameter :: ADD_PERTURB_MODEL_INFO = &
                 transpose(reshape( & ! (/ 1.d0, 12000.d0, 2000.d0, 15000.d0, 3000.d0,1.2d0,1.1d0, &
-                   (/ 1.d0,  -10000.d0,  -1000.d0,  61000.d0, 610000.0d0,1.d0,1.1d0/), (/7,NPERTURB_MODEL/))) 
+                   (/ 1.d0,  -10000.d0,  -1000.d0,  61000.d0, 610000.0d0,1.d0,1.05d0/), (/7,NPERTURB_MODEL/))) 
                  !   (/ 2.d0,  7500.d0,  5000.d0,  1500.d0, 0.0d0,1.3d0,1.1d0/), (/7,NPERTURB_MODEL/))) 
                  
-  
-
-  ! wind can be modeled by a gaussian
+  ! wind can be modeled by a gaussian (see scheme in doc/Scheme_WindTrueModel.pdf)
   ! expression if the model needs 3 parameters : the mean of the gaussian, the variance and the amplitude of the wind
   ! we add also two parameters to cancel the wind at the extremities
-  integer, parameter :: ymin_wind = 80
-  integer, parameter :: ymax_wind = 280
+  ! If ymin_wind < y < ymax_wind, then
+  ! wx = max_wind_factor * exp( (y - mean_gauss_wind)**2 / sigma2_gauss_wind)
+  ! Else wx = 0
+  integer, parameter :: ymin_wind = 8000 ! m
+  integer, parameter :: ymax_wind = 28000 ! m
+  integer, parameter :: jmin_wind = ymin_wind / DELTAY + 1
+  integer, parameter :: jmax_wind = ymax_wind / DELTAY + 1
   double precision, parameter :: mean_gauss_wind = 18  ! km
   double precision, parameter :: sigma2_gauss_wind = 30 ! km^2
   double precision, parameter :: max_wind_factor = 10 ! meters/s 
@@ -337,7 +340,7 @@ module parameters
  !! 3 log density, log celerity, wind
  !! 4 log density, log pressure, wind
  !! 5 log celerity, wind, log pressure
- integer, parameter :: parametrisation = 4
+ integer, parameter :: parametrisation = 3
 
  ! contains the scaling to have x1,x2,x3 and x4 of the inversion varying in the same way
  ! x1: density, x2: pressure, x3: celerity, x4: windx
@@ -364,7 +367,7 @@ module parameters
                                            ! 1. Norm of current model - a priori model, 
                                            ! 2. (Not implemented - gradient),
                                            ! 3. (Not implemented - laplacian)  
- double precision, parameter :: regul_weight = 0.10d0
+ double precision, parameter :: regul_weight = 0.0000010d0
  double precision, dimension(Nflat) :: factor_regul_SRdist
  
  double precision :: alpha_start, alpha, alpha_prec, alpha_low, alpha_high
@@ -378,7 +381,7 @@ module parameters
  ! define the factor of decreasing for the backtracking algorithm
  double precision, parameter :: rate = 0.8d0
  ! define the maximum number of iterations in the backtracking algorithm
- integer, parameter :: maxiter_backtracking = 50
+ integer, parameter :: maxiter_backtracking = 100
 
  ! define the maximum number of iterations in the main optimisation loop
  integer, parameter :: maxiter = 100
@@ -414,4 +417,5 @@ module parameters
  !! 3 : median filter (median filter with a window of 9 elements)
  integer, parameter :: type_smoothing = 3
 
+ double precision :: fx_data, fx_regul
 end module parameters 

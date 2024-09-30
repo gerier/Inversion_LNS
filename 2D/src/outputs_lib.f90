@@ -563,7 +563,8 @@ subroutine save_info_inversion(it)
  ! init path
  if (it == 1 .and. rank == 0) then
    OPEN(UNIT=1222, FILE="./OUTPUT_INVERSION/iterations.txt", position="append", ACTION="write")
-   WRITE(1222,*) "     It, Misfit, Norm(D_Misfit), alpha, count f, count grad, count restart"
+   WRITE(1222,*) "It, Misfit(data), Misfit(regul), Misfit(tot), Norm(D_Misfit), DF.r,",&
+      "Improvement, alpha, count f, count grad, count restart"
    CLOSE(1222)
  endif
  
@@ -574,7 +575,7 @@ subroutine save_info_inversion(it)
 
  if (rank == 0) then 
   OPEN(UNIT=1222, FILE="./OUTPUT_INVERSION/iterations.txt", position="append", ACTION="write")
-  WRITE(1222,*) it, fx, sqrt(dfx_dfx), alpha, count_f, count_grad, count_restart
+  WRITE(1222,*) it, fx_data, fx_regul,fx, sqrt(dfx_dfx), dfx_r, fx-fx_old, alpha, count_f, count_grad, count_restart
   CLOSE(1222)
  endif
  

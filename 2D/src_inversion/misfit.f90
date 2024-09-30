@@ -15,7 +15,8 @@ implicit none
  call MPI_BARRIER(MPI_COMM_WORLD, code)
  
  call flatmodel2priormodel(m)
-  
+
+ call reset_forward() 
  call forwardproblem(p0_prior, rho0_prior, windx_prior, windy_prior,  1, NSTEP, 1) 
  sispressure_prior(:,:) = sispressure(:,:)
  
@@ -33,14 +34,14 @@ enddo
  call MPI_ALLREDUCE(sum(fm_local_per_rec), fm, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
 
  fm = DELTAT * fm / 2
+ fx_data = fm 
 
  count_f = count_f + 1
  
  if (type_regul_term == 1) then
 normsq_m(:) = 0.0d0
-
-  normsq_mm0= factor_regul_SRdist&
-  *(m-m0)**2 
+  normsq_mm0= factor_regul_SRdist*(m-m0)**2
+  normsq_mm0(1:2*NY_LOCAL) = normsq_mm0(1:2*NY_LOCAL) / m0(1:2*NY_LOCAL)**2
   
   call MPI_ALLREDUCE( sum(normsq_mm0(1:NY_LOCAL)), regul_term_rho0, 1, MPI_DOUBLE_PRECISION,&
                                                                                     MPI_SUM,  MPI_COMM_WORLD, code)
@@ -49,11 +50,10 @@ normsq_m(:) = 0.0d0
   call MPI_ALLREDUCE( sum(normsq_mm0(2*NY_LOCAL+1:Nflat)), regul_term_windx, 1, MPI_DOUBLE_PRECISION, &
                                                                                     MPI_SUM,  MPI_COMM_WORLD, code)
                                                                                     
-  
-  fm = fm + regul_weight * 0.5d0 * &
-         (regul_term_p0/regul_term_p0_prior + regul_term_rho0/regul_term_rho0_prior + regul_term_windx/regul_term_windx_prior)
+  fx_regul =  regul_weight * 0.5d0 * &
+         (regul_term_p0 + regul_term_rho0 + regul_term_windx)
+  fm = fm + fx_regul
  
-
  else
   if (type_regul_term /= 0) then 
    print *, "ERROR: Type of the regularisation term: Unknown"
@@ -87,14 +87,12 @@ ONE_OVER_DXDY = 1 / DELTAX**2 / DELTAY**2
 
  if (type_regul_term == 1) then
  
-
     reg_grad(:) = 0.0d0
-    reg_grad(1:NY_LOCAL) = (m(1:NY_LOCAL) - m0(1:NY_LOCAL)) / regul_term_rho0_prior
-    reg_grad(NY_LOCAL+1:2*NY_LOCAL) = (m(NY_LOCAL+1:2*NY_LOCAL) - m0(NY_LOCAL+1:2*NY_LOCAL)) / regul_term_p0_prior
-    reg_grad(2*NY_LOCAL+1:3*NY_LOCAL) = (m(2*NY_LOCAL+1:3*NY_LOCAL) - m0(2*NY_LOCAL+1:3*NY_LOCAL)) / regul_term_windx_prior
+    reg_grad(1:NY_LOCAL) = (m(1:NY_LOCAL) - m0(1:NY_LOCAL)) /m0(1:NY_LOCAL)**2
+    reg_grad(NY_LOCAL+1:2*NY_LOCAL) = (m(NY_LOCAL+1:2*NY_LOCAL) - m0(NY_LOCAL+1:2*NY_LOCAL)) / m0(NY_LOCAL+1:2*NY_LOCAL)**2
+    reg_grad(2*NY_LOCAL+1:3*NY_LOCAL) = (m(2*NY_LOCAL+1:3*NY_LOCAL) - m0(2*NY_LOCAL+1:3*NY_LOCAL)) 
 
-   flat_grad = flat_grad + 0.5 * regul_weight * reg_grad * factor_regul_SRdist
-   
+   flat_grad = flat_grad +  regul_weight * reg_grad * factor_regul_SRdist
    
    
  
@@ -376,7 +374,7 @@ endsubroutine flatmodel2priormodel
 subroutine priormodel2flatmodel(flat_model)
 
 use parameters, only : NX_LOCAL, NY_LOCAL, Nflat, &
-                       scale_model, rho0_prior, c0_prior, p0_prior, windx_prior, parametrisation,m1
+                       scale_model, rho0_prior, c0_prior, p0_prior, windx_prior, parametrisation
 implicit none
 double precision, dimension(Nflat):: flat_model
  
@@ -401,9 +399,9 @@ double precision, dimension(Nflat):: flat_model
   elseif (parametrisation == 4) then 
   ! log density, wind, log pressure
   flat_model(1:NY_LOCAL) = log(rho0_prior(10,1:NY_LOCAL)) / scale_model(1)
-  m1(NY_LOCAL+1:2*NY_LOCAL) = log(p0_prior(10,1:NY_LOCAL)) / scale_model(2)
+  flat_model(NY_LOCAL+1:2*NY_LOCAL) = log(p0_prior(10,1:NY_LOCAL)) / scale_model(2)
   flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(10,1:NY_LOCAL)/ scale_model(4)
-  flat_model(NY_LOCAL+1:2*NY_LOCAL) = log(anint(1e16*p0_prior(10,1:NY_LOCAL))/1e16) / scale_model(2)
+  !flat_model(NY_LOCAL+1:2*NY_LOCAL) = log(anint(1e16*p0_prior(10,1:NY_LOCAL))/1e16) / scale_model(2)
 
  
   

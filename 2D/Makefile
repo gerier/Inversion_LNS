@@ -32,4 +32,4 @@ parameters.o: parameters.f90
 	$(FC) $(FFLAGS) -c parameters.f90
 
 clean:
-	@rm -f *.mod *.o inversion src_gradient/*.o src/*.o src_inversion/*.o
+	@rm -f *.mod *.o xinfrasound src_gradient/*.o src/*.o src_inversion/*.o

@@ -20,7 +20,7 @@ subroutine compute_kernel()
   call reset_kernel()
 
   ! init info about time of computation
-  if (rank == 0) then
+  if (rank == 0 .and. method == 2) then
     print *, "[ Start computating kernel ]"
   endif
   call date_and_time(datein,timein,zone,time_values)
@@ -36,7 +36,7 @@ subroutine compute_kernel()
  
   ! To have an exact backward wavefiled, we use checKpointing
   ! We make a first foward simulation to save all the frames
-  if (rank == 0) then
+  if (rank == 0 .and. method == 2) then
     print *, "----------- Checkpointing part -----------"
   endif
   call save_frames()
@@ -47,7 +47,7 @@ subroutine compute_kernel()
   
   ! Start the kernel computation 
   ! Kernel is the sum over time of correlation between adjoint and backward field
-  if (rank == 0) then
+  if (rank == 0 .and. method == 2) then
     print *, "----------- Kernel part -----------"
   endif
   
