@@ -191,12 +191,12 @@ program main
      ! atmospheric model is saved in a vector form for inverse problem
      call priormodel2flatmodel(m0)
    
-     call MPI_ALLREDUCE( sum(m0(1:NY_LOCAL)**2), regul_term_rho0_prior, 1,MPI_DOUBLE_PRECISION,&
-                  MPI_SUM,MPI_COMM_WORLD, code)
-     call MPI_ALLREDUCE( sum(m0(NY_LOCAL+1:2*NY_LOCAL)**2),regul_term_p0_prior,1,MPI_DOUBLE_PRECISION,&
-                  MPI_SUM,MPI_COMM_WORLD,code)
-     call MPI_ALLREDUCE( sum(m0(2*NY_LOCAL+1:Nflat)**2), regul_term_windx_prior,1, MPI_DOUBLE_PRECISION, &
-                  MPI_SUM,MPI_COMM_WORLD, code)
+     call MPI_ALLREDUCE(maxval(m0(1:NY_LOCAL)), regul_term_rho0_prior, 1,MPI_DOUBLE_PRECISION,&
+                  MPI_MAX,MPI_COMM_WORLD, code)
+     call MPI_ALLREDUCE(maxval(m0(NY_LOCAL+1:2*NY_LOCAL)),regul_term_p0_prior,1,MPI_DOUBLE_PRECISION,&
+                  MPI_MAX,MPI_COMM_WORLD,code)
+     call MPI_ALLREDUCE(maxval(m0(2*NY_LOCAL+1:Nflat)), regul_term_windx_prior,1, MPI_DOUBLE_PRECISION, &
+                  MPI_MAX,MPI_COMM_WORLD, code)
      if (regul_term_windx_prior < TINYVAL) then
         regul_term_windx_prior = 1.0
      endif

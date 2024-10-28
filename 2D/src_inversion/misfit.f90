@@ -88,8 +88,8 @@ ONE_OVER_DXDY = 1 / DELTAX**2 / DELTAY**2
  if (type_regul_term == 1) then
  
     reg_grad(:) = 0.0d0
-    reg_grad(1:NY_LOCAL) = (m(1:NY_LOCAL) - m0(1:NY_LOCAL)) /m0(1:NY_LOCAL)**2
-    reg_grad(NY_LOCAL+1:2*NY_LOCAL) = (m(NY_LOCAL+1:2*NY_LOCAL) - m0(NY_LOCAL+1:2*NY_LOCAL)) / m0(NY_LOCAL+1:2*NY_LOCAL)**2
+    !reg_grad(1:NY_LOCAL) = (m(1:NY_LOCAL) - m0(1:NY_LOCAL)) /m0(1:NY_LOCAL)**2
+    !reg_grad(NY_LOCAL+1:2*NY_LOCAL) = (m(NY_LOCAL+1:2*NY_LOCAL) - m0(NY_LOCAL+1:2*NY_LOCAL)) / m0(NY_LOCAL+1:2*NY_LOCAL)**2
     reg_grad(2*NY_LOCAL+1:3*NY_LOCAL) = (m(2*NY_LOCAL+1:3*NY_LOCAL) - m0(2*NY_LOCAL+1:3*NY_LOCAL)) 
 
    flat_grad = flat_grad +  regul_weight * reg_grad * factor_regul_SRdist
@@ -115,6 +115,9 @@ use parameters
 implicit none
 double precision, dimension (NX_LOCAL,NY_LOCAL) :: grad_c0, grad_rho0, grad_lnc0, grad_lnrho0, grad_lnp0
 double precision, dimension(Nflat) :: flat_grad
+double precision :: scalar_grad_lnrho0, scalar_grad_lnc0, scalar_grad_lnp0, &
+                scalar_grad_rho0, scalar_grad_c0, scalar_grad_p0, &
+                scalar_grad_windx
 integer :: j
 
   if (parametrisation == 1) then
@@ -126,19 +129,43 @@ integer :: j
                     * K_p0(1:NX_LOCAL,1:NY_LOCAL)
     grad_rho0(:,:) = p0_prior(1:NX_LOCAL,1:NY_LOCAL) / rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL) &
                      + K_rho0(1:NX_LOCAL,1:NY_LOCAL) 
-    
+
     do j=1,NY_LOCAL
-      flat_grad(j) = scale_model(1) * sum(grad_rho0(:,j))
-      flat_grad(NY_LOCAL + j) = scale_model(3) * sum(grad_c0(:,j))
-      flat_grad(2*NY_LOCAL + j)= scale_model(4) * sum(K_windx(:,j))
+      ! gather information of different mpi processus 
+      call MPI_ALLREDUCE( sum(grad_c0(:,j)), scalar_grad_c0,1,MPI_DOUBLE_PRECISION,& 
+                        MPI_SUM, row_Comm,ierr)
+      call MPI_ALLREDUCE( sum(grad_rho0(:,j)), scalar_grad_rho0,1,MPI_DOUBLE_PRECISION,& 
+                        MPI_SUM, row_Comm,ierr)
+      call MPI_ALLREDUCE( sum(K_windx(:,j)), scalar_grad_windx,1,MPI_DOUBLE_PRECISION,&
+                        MPI_SUM, row_Comm,ierr)
+      ! init
+      flat_grad(j) = ZERO
+      flat_grad(NY_LOCAL+j) = ZERO
+      ! load information in gradient vector
+      flat_grad(j) = scale_model(1) * scalar_grad_rho0
+      flat_grad(NY_LOCAL + j) = scale_model(3) * scalar_grad_c0
+      flat_grad(2*NY_LOCAL + j)= scale_model(4) * scalar_grad_windx
     enddo
+    
   elseif (parametrisation == 2) then
     ! density, wind, pressure
     do j=1,NY_LOCAL
-      flat_grad(j) = scale_model(1) * sum(K_rho0(:,j))
-      flat_grad(NY_LOCAL + j) = scale_model(2) * sum(K_p0(:,j))
-      flat_grad(2*NY_LOCAL + j) = scale_model(4) * sum(K_windx(:,j))
+      ! gather information of different mpi processus 
+      call MPI_ALLREDUCE( sum(K_rho0(:,j)), scalar_grad_rho0,1,MPI_DOUBLE_PRECISION,& 
+                        MPI_SUM, row_Comm,ierr)
+      call MPI_ALLREDUCE( sum(K_p0(:,j)), scalar_grad_p0,1,MPI_DOUBLE_PRECISION,& 
+                        MPI_SUM, row_Comm,ierr)
+      call MPI_ALLREDUCE( sum(K_windx(:,j)), scalar_grad_windx,1,MPI_DOUBLE_PRECISION,&
+                        MPI_SUM, row_Comm,ierr)
+      ! init
+      flat_grad(j) = ZERO
+      flat_grad(NY_LOCAL+j) = ZERO
+      ! load information in gradient vector
+      flat_grad(j) = scale_model(1) * scalar_grad_rho0
+      flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_p0
+      flat_grad(2*NY_LOCAL + j) = scale_model(4) * scalar_grad_windx
     enddo
+    
   elseif (parametrisation == 3) then
    ! log density, wind, log velocity
     c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
@@ -148,11 +175,22 @@ integer :: j
                        * K_p0(1:NX_LOCAL,1:NY_LOCAL)
     grad_lnrho0(:,:) =  p0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL) &
                        + rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL) 
-    
+  
+    call MPI_BARRIER(MPI_COMM_WORLD, code)
+  
     do j=1,NY_LOCAL
-      flat_grad(j) = scale_model(1) * sum(grad_lnrho0(:,j))
-      flat_grad(NY_LOCAL + j) = scale_model(3) * sum(grad_lnc0(:,j))
-      flat_grad(2*NY_LOCAL + j) = scale_model(4) * sum(K_windx(:,j))
+      call MPI_ALLREDUCE( sum(grad_lnrho0(:,j)), scalar_grad_lnrho0,1,MPI_DOUBLE_PRECISION,& 
+                        MPI_SUM, row_Comm,ierr)
+      call MPI_ALLREDUCE( sum(grad_lnc0(:,j)), scalar_grad_lnc0,1,MPI_DOUBLE_PRECISION,& 
+                        MPI_SUM, row_Comm,ierr)
+      call MPI_ALLREDUCE( sum(K_windx(:,j)), scalar_grad_windx,1,MPI_DOUBLE_PRECISION,&
+                        MPI_SUM, row_Comm,ierr)
+
+      flat_grad(j) = ZERO
+      flat_grad(NY_LOCAL+j) = ZERO
+!      flat_grad(j) = scale_model(1) * scalar_grad_lnrho0
+!      flat_grad(NY_LOCAL + j) = scale_model(3) * scalar_grad_lnc0
+      flat_grad(2*NY_LOCAL + j) = scale_model(4) * scalar_grad_windx
     enddo
     
   elseif (parametrisation == 4) then
@@ -162,9 +200,20 @@ integer :: j
     grad_lnrho0(:,:) = rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL)
     
     do j=1,NY_LOCAL
-      flat_grad(j) = scale_model(1) * sum(grad_lnrho0(:,j))
-      flat_grad(NY_LOCAL + j) = scale_model(2) * sum(grad_lnp0(:,j))
-      flat_grad(2*NY_LOCAL + j) = scale_model(4) * sum(K_windx(:,j))
+      ! gather information of different mpi processus 
+      call MPI_ALLREDUCE( sum(grad_lnp0(:,j)), scalar_grad_lnp0,1,MPI_DOUBLE_PRECISION,& 
+                        MPI_SUM, row_Comm,ierr)
+      call MPI_ALLREDUCE( sum(grad_lnrho0(:,j)), scalar_grad_lnrho0,1,MPI_DOUBLE_PRECISION,& 
+                        MPI_SUM, row_Comm,ierr)
+      call MPI_ALLREDUCE( sum(K_windx(:,j)), scalar_grad_windx,1,MPI_DOUBLE_PRECISION,&
+                        MPI_SUM, row_Comm,ierr)
+      ! init
+      flat_grad(j) = ZERO
+      flat_grad(NY_LOCAL+j) = ZERO
+      ! load information in gradient vector
+      flat_grad(j) = scale_model(1) * scalar_grad_lnrho0
+      flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_lnp0
+      flat_grad(2*NY_LOCAL + j) = scale_model(4) * scalar_grad_windx
     enddo
     
   elseif (parametrisation == 5) then
@@ -176,15 +225,27 @@ integer :: j
                        + rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL) 
     
     do j=1,NY_LOCAL
-      flat_grad(j) = scale_model(3) * sum(grad_lnc0(:,j))
-      flat_grad(NY_LOCAL + j) = scale_model(2) * sum(grad_lnp0(:,j))
-      flat_grad(2*NY_LOCAL + j) = scale_model(4) * sum(K_windx(:,j))
+      ! log celerity, wind, log pressure
+      call MPI_ALLREDUCE( sum(grad_lnp0(:,j)), scalar_grad_lnp0,1,MPI_DOUBLE_PRECISION,& 
+                        MPI_SUM, row_Comm,ierr)
+      call MPI_ALLREDUCE( sum(grad_lnc0(:,j)), scalar_grad_lnc0,1,MPI_DOUBLE_PRECISION,& 
+                        MPI_SUM, row_Comm,ierr)
+      call MPI_ALLREDUCE( sum(K_windx(:,j)), scalar_grad_windx,1,MPI_DOUBLE_PRECISION,&
+                        MPI_SUM, row_Comm,ierr)
+      ! init
+      flat_grad(j) = ZERO
+      flat_grad(NY_LOCAL+j) = ZERO
+      ! load information in gradient vector
+      flat_grad(j) = scale_model(3) * scalar_grad_lnc0
+      flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_lnp0
+      flat_grad(2*NY_LOCAL + j) = scale_model(4) * scalar_grad_windx
     enddo 
   else
     print *, "ERROR: parametrisation unknown"
     stop  
   endif
-  !flat_grad = flat_grad * DELTAX * DELTAY !!!!!!!!ICIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+  
+  flat_grad = flat_grad * DELTAX * DELTAY
 
 endsubroutine kernelparam2inversionparam
 

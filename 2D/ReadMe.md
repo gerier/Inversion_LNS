@@ -43,7 +43,7 @@ make clean; make
 To execute the program:
 Edit the file scrit.slurm with the number of processus, email, time of execute, etc.
 ```
-sbatch script.slurm
+sbatch script_pando.slurm
 ```
 
 ## Application on Calmip supercomputer
@@ -64,7 +64,7 @@ make clean; make
 To execute the program:
 Edit the file scrit.slurm with the number of processus, email, time of execute, etc.
 ```
-sbatch script.slurm
+sbatch script_calmip.slurm
 ```
 
 

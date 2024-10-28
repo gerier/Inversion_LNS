@@ -89,7 +89,6 @@ double precision :: z, rho,  c, p, grav, w_P, gamma_ratio, &
   call write_background(rho0_true, kappa_unrelaxed_true, p0_true, windx_true, windy_true, gamma_chimie,g)
 
 
-
   !!! 
   ! PRIOR MODEL
   !!!
@@ -152,6 +151,7 @@ double precision :: z, rho,  c, p, grav, w_P, gamma_ratio, &
   call send_receive_corners(windy_prior)
   call send_receive_corners(rho0_prior)
 
+  c0_prior(:,:) = sqrt(gamma_chimie(:,:)*p0_prior(:,:)/rho0_prior(:,:))
 
 
  else ! Define model from informations of parameters.f90

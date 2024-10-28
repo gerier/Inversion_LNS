@@ -6,11 +6,11 @@ module parameters
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! total number of grid points in each direction of the grid
-  integer, parameter :: NY = 500
-  integer, parameter :: NX = 200
+  integer, parameter :: NY = 396
+  integer, parameter :: NX = 504
 
-  integer, parameter :: NPROC_X = 10 !! 20
-  integer, parameter :: NPROC_Y = 10 !! 20
+  integer, parameter :: NPROC_X = 12 !! 20
+  integer, parameter :: NPROC_Y = 12 !! 20
   integer, parameter :: NPROC = NPROC_X * NPROC_Y !! 20
   
   integer, parameter :: NX_LOCAL = NX / NPROC_X
@@ -34,7 +34,7 @@ module parameters
   double precision, parameter :: DELTAT = 0.05d0
 
 ! total number of time steps
-  integer, parameter :: NSTEP = 2800
+  integer, parameter :: NSTEP = 4200
 
 ! parameters for the source
   double precision, parameter :: f0 = 0.1d0
@@ -44,11 +44,11 @@ module parameters
   double precision, parameter :: a = pi*pi*f0*f0
 
 ! source (in pressure, thus at a gridpoint rather than half a grid cell away)
-  integer, parameter :: type_source = 1 ! 1. Plane wave, 2. Point source, 3. POint source with SPREAD_SSF
+  integer, parameter :: type_source = 2! 1. Plane wave, 2. Point source, 3. POint source with SPREAD_SSF
   ! if type_source == 1 
   integer, parameter :: wavefront = 2 ! 1. Wavefront in x direction, 2. Wavefront in y direction
   ! if type_source == 1,2 or 3
-  double precision, parameter :: xsource = 2000.d0
+  double precision, parameter :: xsource = 4000.d0
   double precision, parameter :: ysource = 300.d0
   integer, parameter :: ISOURCE = xsource / DELTAX + 1
   integer, parameter :: JSOURCE = ysource / DELTAY + 1
@@ -60,11 +60,11 @@ module parameters
   ! spread the source spatial function
   double precision :: distance2, factor_ssf
  
-  logical, parameter :: atmopsheric_model_file = .false.
+  logical, parameter :: atmopsheric_model_file = .true.
    character(len=200) :: atmopsheric_file_name_true = &
-     "/home/deos/s.gerier/Bureau/Test_2006/atmospheric_model_Hukkakero_grav.dat" !  !!! CHANGE _grav.dat"
+     "./model_target.dat" !  !!! CHANGE _grav.dat"
    character(len=200) :: atmopsheric_file_name_prior = & 
-     "/home/deos/s.gerier/Bureau/Test_2006/atmospheric_model_Hukkakero.dat"
+     "./model.dat"
 
   ! P-velocity and density
   ! the unrelaxed value is the value at frequency = 0 (the relaxed value would be the value at frequency = +infinity)
@@ -81,7 +81,7 @@ module parameters
   ! add perturbation into the model
   !! perturbation correspond to a square or a circle, in which one of the parameter (c,rho) are multiplied by a factor
   !! define the number of perturbation
-  integer, parameter :: NPERTURB_MODEL = 1
+  integer, parameter :: NPERTURB_MODEL = 0
   !! define the type of perturbation
   !!! If perturbation has the shape of a square
   !!!!   Type=1, x_start, y_start, x_end, y_end, factor on density, factor on celerity
@@ -89,15 +89,14 @@ module parameters
   !!!!   Type=2, x_center, y_center, circle radius, None, factor on density, factor on celerity 
   double precision, dimension(NPERTURB_MODEL,7), parameter :: ADD_PERTURB_MODEL_INFO = &
                 transpose(reshape( & ! (/ 1.d0, 12000.d0, 2000.d0, 15000.d0, 3000.d0,1.2d0,1.1d0, &
-                   (/ 1.d0,  -10000.d0,  -1000.d0,  61000.d0, 610000.0d0,1.d0,1.05d0/), (/7,NPERTURB_MODEL/))) 
+                   (/ 1.d0,  -10000.d0,  13000.d0,  61000.d0, 28000.0d0,1.d0,1.0d0/), (/7,NPERTURB_MODEL/))) 
                  !   (/ 2.d0,  7500.d0,  5000.d0,  1500.d0, 0.0d0,1.3d0,1.1d0/), (/7,NPERTURB_MODEL/))) 
                  
-  ! wind can be modeled by a gaussian (see scheme in doc/Scheme_WindTrueModel.pdf)
+  
+
+  ! wind can be modeled by a gaussian
   ! expression if the model needs 3 parameters : the mean of the gaussian, the variance and the amplitude of the wind
   ! we add also two parameters to cancel the wind at the extremities
-  ! If ymin_wind < y < ymax_wind, then
-  ! wx = max_wind_factor * exp( (y - mean_gauss_wind)**2 / sigma2_gauss_wind)
-  ! Else wx = 0
   integer, parameter :: ymin_wind = 8000 ! m
   integer, parameter :: ymax_wind = 28000 ! m
   integer, parameter :: jmin_wind = ymin_wind / DELTAY + 1
@@ -108,13 +107,16 @@ module parameters
    
   
 	
- integer, parameter :: NREC_SET = 1
+ integer, parameter :: NREC_SET = 4
  ! define receivers along a line 
  !! for each set: define how many receivers are  on the line
- integer, dimension(NREC_SET), parameter :: NREC_PER_SET = (/200/)!,200,200,200/) 
+ integer, dimension(NREC_SET), parameter :: NREC_PER_SET = (/10,7,10,7/)!,200,200,200/) 
  !! for each set: x_start, y_start, x_end, y_end
  double precision, dimension(NREC_SET,4), parameter :: REC_SET_INFO = transpose(reshape( &
-      (/0,	30000,	19900,	30000 /), (/4,NREC_SET/)))!,&
+       (/2000, 20000, 47000, 20000,&
+         5000, 2500, 5000, 17500,&
+         2000,200,47000,200,&
+        45000, 2500, 45000, 17500 /), (/4,NREC_SET/)))!,&
       !  0,	11000,	19900,	11000,&
       !  0,	21000,	19900,	21000,&
       !  0,	1000,	19900,	1000 /), (/4,NREC_SET/)))
@@ -200,8 +202,8 @@ module parameters
 
   ! PML parameters
   ! flags to add PML layers to the edges of the grid
-  logical, parameter :: USE_PML_XMIN = .FALSE.
-  logical, parameter :: USE_PML_XMAX = .FALSE.
+  logical, parameter :: USE_PML_XMIN = .TRUE.
+  logical, parameter :: USE_PML_XMAX = .TRUE.
   logical, parameter :: USE_PML_YMIN = .FALSE.
   logical, parameter :: USE_PML_YMAX = .TRUE.
   ! thickness of the PML layer in grid points
@@ -315,6 +317,7 @@ module parameters
   integer, parameter :: number_of_values_y = 2*(NX_LOCAL+4)
   integer, parameter :: number_of_values_corner = 4
 
+  integer :: row_Comm,ierr
   integer :: nb_procs,rank,i_rank,j_rank,code,rank_cut_plane,i_global,offset_i, &
                                                j_global, offset_j
   integer :: sender_right_shift,receiver_right_shift,sender_left_shift,receiver_left_shift,&
@@ -344,7 +347,7 @@ module parameters
 
  ! contains the scaling to have x1,x2,x3 and x4 of the inversion varying in the same way
  ! x1: density, x2: pressure, x3: celerity, x4: windx
- integer, dimension(4), parameter :: scale_model = (/1,1,1,1/)
+ integer, dimension(4), parameter :: scale_model = (/1,1,1,10/)
  
  ! number of iterations to start with steepest descent direction
  integer :: steepest_nbiter_default = 5
@@ -381,7 +384,7 @@ module parameters
  ! define the factor of decreasing for the backtracking algorithm
  double precision, parameter :: rate = 0.8d0
  ! define the maximum number of iterations in the backtracking algorithm
- integer, parameter :: maxiter_backtracking = 100
+ integer, parameter :: maxiter_backtracking = 50
 
  ! define the maximum number of iterations in the main optimisation loop
  integer, parameter :: maxiter = 100

@@ -53,7 +53,7 @@ subroutine optimisation() ! TODO
 
     r(:) = - dfx(:)
     call scalar_product(dfx,r,dfx_r,Nflat) 
-   
+
     ! if L-BFGS is chosen, save informations for next iterations
     if (type_gradient == 6 .and. iter /= 1) then
       Y_list(iter-1,:) = dfx - dfx_old
@@ -85,7 +85,8 @@ subroutine optimisation() ! TODO
     ! first, check if descent direction can be applied (test if descent direction will not be equal to infinity)
     call scalar_product(dfx-dfx_old,r_old,dfxdfx_old_r_old,Nflat)
     call scalar_product(dfx-dfx_old,dfx-dfx_old,norm2_dfxdfx_old,Nflat) 
-    if (((abs(dfxdfx_old_r_old))<1e-8 .and. (type_gradient>=3 .and. type_gradient<=5)) .or. sqrt(norm2_dfxdfx_old)<1e-15) then ! TODO pas logique <dfx,r> ! .or. dot_product(dfx,r) > 0 )
+    if( ((abs(dfxdfx_old_r_old))<1e-8 .and. (type_gradient>=3 &
+        .and. type_gradient<=5)) .or. sqrt(norm2_dfxdfx_old)<1e-15) then ! TODO pas logique <dfx,r> ! .or. dot_product(dfx,r) > 0 )
        r(:) = - dfx(:)
        count_restart = count_restart+1
     else 
@@ -113,7 +114,7 @@ subroutine optimisation() ! TODO
     endif
     
     ! find a step that respects the Strong Wolfe conditions
-    call line_search() 
+    call line_search()
     if (rank == 0) then
     print *, "Previous cost function :", fx
     print *, "New cost function : ", fx_new
@@ -322,8 +323,8 @@ subroutine line_search()
    endif ! wolfe1
  
  enddo 
- 
- 
+
+
 endsubroutine line_search
 
 
@@ -341,13 +342,14 @@ end subroutine
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine bestAlpha(alpha_hist,size_alpha_hist) ! Comment faire le array ? ne connait pas la taille 
-use parameters, only : x, r, alpha, x_new,fx_new,maxiter_backtracking,rank
+use parameters, only : x, r, alpha, x_new,fx_new,maxiter_backtracking,rank,code, MPI_COMM_WORLD
 implicit none
 double precision :: f_best,best
 integer :: i 
 integer :: size_alpha_hist
 double precision, dimension(maxiter_backtracking,2) :: alpha_hist
 
+ call MPI_BARRIER(MPI_COMM_WORLD, code)
  ! subroutine to find the alpha that minimise f(x+alpha*r)
  best = alpha_hist(1,1)
  f_best = alpha_hist(1,2)
@@ -471,7 +473,11 @@ subroutine zoom()
      call quadratic(alpha_low,fx_low,dfx_low_r,alpha_high, fx_high)
    else
      if (modulo(iter,10) < TINYVAL) then
-        alpha = (alpha_low + alpha_high)/2
+        if (alpha_low /= 0) then
+        alpha = exp( (log(alpha_low) + log(alpha_high))/2)
+        else
+          alpha = (alpha_low + alpha_high)/2
+        endif
      else
       ! then, choose alpha as the minimum of the cubic function interpolated the curve, between alpha low and alpha_high 
       call scalar_product(dfx_low,r,dfx_low_r, Nflat)
@@ -538,7 +544,7 @@ subroutine zoom()
        dfx_low = dfx_new
 
 
-       if (abs(alpha_low - alpha_high)<1e-15) then
+       if (abs(alpha_low - alpha_high)<1e-15 .or. maxiter_backtracking <= size_alpha_hist) then
           ! if alpha_high too close of alpha_low, stop the algorithm and select an apha respecting the Armijo condition 
           call bestAlpha(alpha_hist,size_alpha_hist)
           call df(x_new,dfx_new) 
@@ -698,6 +704,7 @@ subroutine smoothing(x) ! TODO
   endif
 
   c0_prior(:,:)   = sqrt(gamma_chimie(:,:) * p0_prior(:,:) / rho0_prior(:,:))
+
   call priormodel2flatmodel(x)
  
 endsubroutine smoothing

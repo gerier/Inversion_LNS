@@ -1,5 +1,5 @@
 FC = mpif90
-FFLAGS=-O3 -Wunused-variable 
+FFLAGS=-O3 -Wunused-variable -g -fbacktrace 
 mcmodel=large
 
 SRCS := src/main.f90 \
@@ -32,4 +32,4 @@ parameters.o: parameters.f90
 	$(FC) $(FFLAGS) -c parameters.f90
 
 clean:
-	@rm -f *.mod *.o xinfrasound src_gradient/*.o src/*.o src_inversion/*.o
+	@rm -f *.mod *.o xinfrasound src_gradient/*.o src/*.o src_forward/*.o src_inversion/*.o

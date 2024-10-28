@@ -238,7 +238,7 @@ endsubroutine send_receive_corners
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine get_neighboors()
-
+use MPI
 use parameters
 implicit none
 
@@ -271,7 +271,11 @@ implicit none
   !  ---------------      
   i_rank = modulo(rank,NPROC_X)
   j_rank = rank /NPROC_X
-   
+  
+  ! split process in subgroup
+  call MPI_BARRIER(mpi_comm_world,code)
+  call MPI_Comm_Split(MPI_COMM_WORLD, j_rank, rank, row_Comm,ierr)
+ 
   ! offset of this slice when we cut along Z
   offset_i = i_rank * NX_LOCAL
   offset_j = j_rank * NY_LOCAL

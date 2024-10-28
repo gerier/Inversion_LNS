@@ -5,29 +5,35 @@ import glob
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({'figure.autolayout': True})
 
-iteration = 7
-list_rho_file = glob.glob("./OUTPUT_INVERSION/rho0_%06d_*"%(iteration))
-list_p_file = glob.glob("./OUTPUT_INVERSION/p0_%06d_*"%(iteration))
-list_wx_file = glob.glob("./OUTPUT_INVERSION/windx_%06d_*"%(iteration))
-list_wy_file = glob.glob("./OUTPUT_INVERSION/windy_%06d_*"%(iteration))
+iteration = 60
+output =""
+list_rho_file = glob.glob("./OUTPUT_INVERSION"+output+"/rho0_%06d_*"%(iteration))
+list_p_file = glob.glob("./OUTPUT_INVERSION"+output+"/p0_%06d_*"%(iteration))
+list_wx_file = glob.glob("./OUTPUT_INVERSION"+output+"/windx_%06d_*"%(iteration))
+list_wy_file = glob.glob("./OUTPUT_INVERSION"+output+"/windy_%06d_*"%(iteration))
 
-list_Krho_file = glob.glob("./OUTPUT_INVERSION/Krho0_%06d_*"%(iteration))
-list_Kp_file = glob.glob("./OUTPUT_INVERSION/Kp0_%06d_*"%(iteration))
-list_Kwx_file = glob.glob("./OUTPUT_INVERSION/Kwindx_%06d_*"%(iteration))
-list_Kwy_file = glob.glob("./OUTPUT_INVERSION/Kwindy_%06d_*"%(iteration))
+list_rho_file_prior = glob.glob("./OUTPUT_INVERSION"+output+"/rho0_000000_*")
+list_p_file_prior = glob.glob("./OUTPUT_INVERSION"+output+"/p0_000000_*")
+list_wx_file_prior = glob.glob("./OUTPUT_INVERSION"+output+"/windx_000000_*")
+list_wy_file_prior = glob.glob("./OUTPUT_INVERSION"+output+"/windy_000000_*")
+
+list_Krho_file = glob.glob("./OUTPUT_INVERSION"+output+"/Krho0_%06d_*"%(iteration))
+list_Kp_file = glob.glob("./OUTPUT_INVERSION"+output+"/Kp0_%06d_*"%(iteration))
+list_Kwx_file = glob.glob("./OUTPUT_INVERSION"+output+"/Kwindx_%06d_*"%(iteration))
+list_Kwy_file = glob.glob("./OUTPUT_INVERSION"+output+"/Kwindy_%06d_*"%(iteration))
 
 list_rho_true_file = glob.glob("./MODELS/rho0_true_*.txt")
 list_p_true_file = glob.glob("./MODELS/p0_true_*.txt")
 list_wx_true_file = glob.glob("./MODELS/windx_true_*.txt")
 list_wy_true_file = glob.glob("./MODELS/windy_true_*.txt")
 
-NX = 200
-NPROCX = 2
+NX = 504
+NPROCX = 12
 dx = 100
 
-NY = 500
+NY = 396
 dy = 100 
-NPROCY = 4
+NPROCY = 12
 
 rho = np.zeros((NX,NY))
 p = np.zeros((NX,NY))
@@ -233,3 +239,17 @@ plt.colorbar()
 
 plt.show()
 
+fig, ax = plt.subplots(1,2, sharey=True)#, layout='constrained')
+vmin = min(np.min(c_true)+np.min(abs(wx_true)),np.min(c)+np.min(abs(wx)))
+vmax = max(np.max(c_true)+np.max(abs(wx_true)),np.max(c)+np.max(abs(wx)))
+
+im0 = ax[0].pcolormesh(X,Y,c_true + wx_true.T,vmin=vmin,vmax=vmax)
+im1 = ax[1].pcolormesh(X,Y,c+wx.T,vmin=vmin,vmax=vmax)
+plt.suptitle("Effective wave speed")
+plt.colorbar(im1,ax=ax[1],shrink=0.8)
+
+plt.figure()
+plt.plot(c.T[100,:] + wx[100,:])
+plt.plot(c_true.T[100,:] + wx_true[100,:])
+plt.title("Effective wave speed")
+plt.show()

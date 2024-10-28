@@ -52,7 +52,6 @@ subroutine compute_kernel()
   endif
   
   do it=1,NSTEP
-
     ! update old values
     ! old values are useful since the leap frog scheme and the derivative in time in
     ! the density kernel expression

@@ -333,7 +333,7 @@ implicit none
     
   ! write the source
   if (rank == 0) then
-   open(unit=211,file='./OUTPUT/source_time_function_model.dat',status='unknown',position="append")
+   open(unit=211,file='./OUTPUT/source_time_function_model.dat',status='unknown',position="append",action='write')
     write(211,*) (t-t0), source_term
    close(211)
   endif
@@ -689,8 +689,6 @@ implicit none
   endif
 
 
-
-
   ! store seismograms
   do irec = 1,NREC
      ! beware here that the two components of the velocity vector are not defined at the same point
@@ -707,7 +705,6 @@ implicit none
         sisrhop(it,irec) = rhop(ix_irec,iy_irec)
       endif 
   enddo
-
 
    ! update the maxvalue to create normalised image
    if (save_normimage_overtime == 1) then

@@ -67,7 +67,7 @@
   subroutine write_seismograms(sisvx,sisvy,sispressure,sisrhop,nt,nrec,DELTAT,t0,type_number)
 
   use MPI
-  use parameters, only : ix_rec,iy_rec,NX_LOCAL,NY_LOCAL,i_rank,j_rank
+  use parameters, only : ix_rec,iy_rec,NX_LOCAL,NY_LOCAL,i_rank,j_rank, code
   implicit none
 
   integer nt,nrec
@@ -83,7 +83,7 @@
 
   character(len=100) file_name
 
- 
+  call mpi_barrier(mpi_comm_world, code)
 
   do irec=1,nrec
     if (i_rank == (ix_rec(irec)-1)/NX_LOCAL .and. j_rank == (iy_rec(irec)-1)/NY_LOCAL) then
