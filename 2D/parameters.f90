@@ -4,7 +4,11 @@ module parameters
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Paramaters 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+! method
+! 1: forward, 2: kernel, 3: inversion
+ integer, parameter :: method = 3
+ 
+ 
 ! total number of grid points in each direction of the grid
   integer, parameter :: NY = 396
   integer, parameter :: NX = 504
@@ -60,6 +64,26 @@ module parameters
   ! spread the source spatial function
   double precision :: distance2, factor_ssf
  
+ 	
+ integer, parameter :: NREC_SET = 4
+ ! define receivers along a line 
+ !! for each set: define how many receivers are  on the line
+ integer, dimension(NREC_SET), parameter :: NREC_PER_SET = (/10,7,10,7/)!,200,200,200/) 
+ !! for each set: x_start, y_start, x_end, y_end
+ double precision, dimension(NREC_SET,4), parameter :: REC_SET_INFO = transpose(reshape( &
+       (/2000, 20000, 47000, 20000,&
+         5000, 2500, 5000, 17500,&
+         2000,200,47000,200,&
+        45000, 2500, 45000, 17500 /), (/4,NREC_SET/)))!,&
+      !  0,	11000,	19900,	11000,&
+      !  0,	21000,	19900,	21000,&
+      !  0,	1000,	19900,	1000 /), (/4,NREC_SET/)))
+	
+        
+ integer, parameter :: NREC = sum(NREC_PER_SET)
+
+
+
   logical, parameter :: atmopsheric_model_file = .true.
    character(len=200) :: atmopsheric_file_name_true = &
      "./model_target.dat" !  !!! CHANGE _grav.dat"
@@ -105,27 +129,6 @@ module parameters
   double precision, parameter :: max_wind_factor = 10 ! meters/s 
    
   
-	
- integer, parameter :: NREC_SET = 4
- ! define receivers along a line 
- !! for each set: define how many receivers are  on the line
- integer, dimension(NREC_SET), parameter :: NREC_PER_SET = (/10,7,10,7/)!,200,200,200/) 
- !! for each set: x_start, y_start, x_end, y_end
- double precision, dimension(NREC_SET,4), parameter :: REC_SET_INFO = transpose(reshape( &
-       (/2000, 20000, 47000, 20000,&
-         5000, 2500, 5000, 17500,&
-         2000,200,47000,200,&
-        45000, 2500, 45000, 17500 /), (/4,NREC_SET/)))!,&
-      !  0,	11000,	19900,	11000,&
-      !  0,	21000,	19900,	21000,&
-      !  0,	1000,	19900,	1000 /), (/4,NREC_SET/)))
-	
-        
- integer, parameter :: NREC = sum(NREC_PER_SET)
-
-! method
-! 1: forward, 2: kernel, 3: inversion
- integer, parameter :: method = 3
  
 ! display information on the screen from time to time
   integer, parameter :: IT_DISPLAY = 200 !NSTEP !  200! NSTEP !200
