@@ -16,8 +16,8 @@ subroutine computePML()
   if (NPOWER < 1) stop 'NPOWER must be greater than 1'
 
 ! compute d0 from INRIA report section 6.1 http://hal.inria.fr/docs/00/07/32/19/PDF/RR-3471.pdf
-  d0_x = - (NPOWER + 1) * cp_unrelaxed * log(Rcoef) / (2.d0 * thickness_PML_x)
-  d0_y = - (NPOWER + 1) * cp_unrelaxed * log(Rcoef) / (2.d0 * thickness_PML_y)
+  d0_x = - (NPOWER + 1) * cp_unrelaxed_prior * log(Rcoef) / (2.d0 * thickness_PML_x)
+  d0_y = - (NPOWER + 1) * cp_unrelaxed_prior * log(Rcoef) / (2.d0 * thickness_PML_y)
 
   if (rank == 0) then
   print *,'d0_x = ',d0_x

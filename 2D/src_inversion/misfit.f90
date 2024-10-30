@@ -143,8 +143,8 @@ integer :: j
       flat_grad(NY_LOCAL+j) = ZERO
       ! load information in gradient vector
       flat_grad(j) = scale_model(1) * scalar_grad_rho0
-      flat_grad(NY_LOCAL + j) = scale_model(3) * scalar_grad_c0
-      flat_grad(2*NY_LOCAL + j)= scale_model(4) * scalar_grad_windx
+      flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_c0
+      flat_grad(2*NY_LOCAL + j)= scale_model(3) * scalar_grad_windx
     enddo
     
   elseif (parametrisation == 2) then
@@ -163,7 +163,7 @@ integer :: j
       ! load information in gradient vector
       flat_grad(j) = scale_model(1) * scalar_grad_rho0
       flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_p0
-      flat_grad(2*NY_LOCAL + j) = scale_model(4) * scalar_grad_windx
+      flat_grad(2*NY_LOCAL + j) = scale_model(3) * scalar_grad_windx
     enddo
     
   elseif (parametrisation == 3) then
@@ -189,8 +189,8 @@ integer :: j
       flat_grad(j) = ZERO
       flat_grad(NY_LOCAL+j) = ZERO
 !      flat_grad(j) = scale_model(1) * scalar_grad_lnrho0
-!      flat_grad(NY_LOCAL + j) = scale_model(3) * scalar_grad_lnc0
-      flat_grad(2*NY_LOCAL + j) = scale_model(4) * scalar_grad_windx
+!      flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_lnc0
+      flat_grad(2*NY_LOCAL + j) = scale_model(3) * scalar_grad_windx
     enddo
     
   elseif (parametrisation == 4) then
@@ -213,7 +213,7 @@ integer :: j
       ! load information in gradient vector
       flat_grad(j) = scale_model(1) * scalar_grad_lnrho0
       flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_lnp0
-      flat_grad(2*NY_LOCAL + j) = scale_model(4) * scalar_grad_windx
+      flat_grad(2*NY_LOCAL + j) = scale_model(3) * scalar_grad_windx
     enddo
     
   elseif (parametrisation == 5) then
@@ -236,9 +236,9 @@ integer :: j
       flat_grad(j) = ZERO
       flat_grad(NY_LOCAL+j) = ZERO
       ! load information in gradient vector
-      flat_grad(j) = scale_model(3) * scalar_grad_lnc0
+      flat_grad(j) = scale_model(1) * scalar_grad_lnc0
       flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_lnp0
-      flat_grad(2*NY_LOCAL + j) = scale_model(4) * scalar_grad_windx
+      flat_grad(2*NY_LOCAL + j) = scale_model(3) * scalar_grad_windx
     enddo 
   else
     print *, "ERROR: parametrisation unknown"
@@ -261,8 +261,8 @@ integer :: j
   if (parametrisation == 1) then
    ! density, wind, velocity
    flat_rho0 = scale_model(1)  * flat_model(:NY_LOCAL)
-   flat_c0 = scale_model(3)  * flat_model(NY_LOCAL+1:2*NY_LOCAL)
-   flat_windx = scale_model(4) * flat_model(1+2*NY_LOCAL:Nflat)
+   flat_c0 = scale_model(2)  * flat_model(NY_LOCAL+1:2*NY_LOCAL)
+   flat_windx = scale_model(3) * flat_model(1+2*NY_LOCAL:Nflat)
    
    do j=1,NY_LOCAL
       rho0_prior(:,j) = flat_rho0(j)
@@ -277,7 +277,7 @@ integer :: j
    ! density, wind, pressure
    flat_rho0 = scale_model(1)  * flat_model(:NY_LOCAL)
    flat_p0 = scale_model(2)  * flat_model(NY_LOCAL+1:2*NY_LOCAL)
-   flat_windx = scale_model(4) * flat_model(1+2*NY_LOCAL:)
+   flat_windx = scale_model(3) * flat_model(1+2*NY_LOCAL:)
    
    do j=1,NY_LOCAL
       rho0_prior(:,j) = flat_rho0(j)
@@ -291,8 +291,8 @@ integer :: j
   else if (parametrisation == 3) then
    ! log density, wind, log velocity
    flat_rho0 = exp(scale_model(1)  * flat_model(:NY_LOCAL))
-   flat_c0 = exp(scale_model(3)  * flat_model(NY_LOCAL+1:2*NY_LOCAL))
-   flat_windx = scale_model(4) * flat_model(1+2*NY_LOCAL:)
+   flat_c0 = exp(scale_model(2)  * flat_model(NY_LOCAL+1:2*NY_LOCAL))
+   flat_windx = scale_model(3) * flat_model(1+2*NY_LOCAL:)
    
    do j=1,NY_LOCAL
       rho0_prior(:,j) = flat_rho0(j)
@@ -308,7 +308,7 @@ integer :: j
   
    flat_rho0 = exp(scale_model(1)  * flat_model(1:NY_LOCAL))
    flat_p0 = exp(scale_model(2)  * anint(1e16*flat_model(NY_LOCAL+1:2*NY_LOCAL))/1e16)
-   flat_windx = scale_model(4) * flat_model(1+2*NY_LOCAL:)
+   flat_windx = scale_model(3) * flat_model(1+2*NY_LOCAL:)
 
    do j=1,NY_LOCAL
       rho0_prior(:,j) = flat_rho0(j)  
@@ -321,11 +321,11 @@ integer :: j
 
  
   elseif (parametrisation == 5) then
-  ! log celerity, wind, log pressure
+  ! log celerity, log pressure, wind
   
-   flat_c0 = exp(scale_model(3)  * flat_model(1:NY_LOCAL))
+   flat_c0 = exp(scale_model(1)  * flat_model(1:NY_LOCAL))
    flat_p0 = exp(scale_model(2)  * flat_model(NY_LOCAL+1:2*NY_LOCAL))
-   flat_windx = scale_model(4) * flat_model(1+2*NY_LOCAL:)
+   flat_windx = scale_model(3) * flat_model(1+2*NY_LOCAL:)
    
    do j=1,NY_LOCAL
       c0_prior(:,j) = flat_c0(j)  
@@ -442,35 +442,35 @@ double precision, dimension(Nflat):: flat_model
   if (parametrisation == 1) then
   ! density, wind, velocity
   flat_model(:NY_LOCAL) = rho0_prior(1,1:NY_LOCAL) / scale_model(1)
-  flat_model(NY_LOCAL+1:2*NY_LOCAL) = c0_prior(1,1:NY_LOCAL)/ scale_model(3)
-  flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(1,1:NY_LOCAL)/ scale_model(4)
+  flat_model(NY_LOCAL+1:2*NY_LOCAL) = c0_prior(1,1:NY_LOCAL)/ scale_model(2)
+  flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(1,1:NY_LOCAL)/ scale_model(3)
     
   elseif (parametrisation == 2) then
   ! density, wind, pressure
   flat_model(:NY_LOCAL) = rho0_prior(1,1:NY_LOCAL) / scale_model(1)
   flat_model(NY_LOCAL+1:2*NY_LOCAL) = p0_prior(1,1:NY_LOCAL)/ scale_model(2)
-  flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(1,1:NY_LOCAL)/ scale_model(4)
+  flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(1,1:NY_LOCAL)/ scale_model(3)
   
   elseif (parametrisation == 3) then
   ! log density, wind, log velocity
   flat_model(:NY_LOCAL) = log(rho0_prior(1,1:NY_LOCAL)) / scale_model(1)
-  flat_model(NY_LOCAL+1:2*NY_LOCAL) = log(c0_prior(1,1:NY_LOCAL))/ scale_model(3)
-  flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(1,1:NY_LOCAL)/ scale_model(4)
+  flat_model(NY_LOCAL+1:2*NY_LOCAL) = log(c0_prior(1,1:NY_LOCAL))/ scale_model(2)
+  flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(1,1:NY_LOCAL)/ scale_model(3)
   
   elseif (parametrisation == 4) then 
   ! log density, wind, log pressure
   flat_model(1:NY_LOCAL) = log(rho0_prior(10,1:NY_LOCAL)) / scale_model(1)
   flat_model(NY_LOCAL+1:2*NY_LOCAL) = log(p0_prior(10,1:NY_LOCAL)) / scale_model(2)
-  flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(10,1:NY_LOCAL)/ scale_model(4)
+  flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(10,1:NY_LOCAL)/ scale_model(3)
   !flat_model(NY_LOCAL+1:2*NY_LOCAL) = log(anint(1e16*p0_prior(10,1:NY_LOCAL))/1e16) / scale_model(2)
 
  
   
   elseif (parametrisation == 5) then
   ! log celerity, wind, log pressure
-  flat_model(1:NY_LOCAL) = log(c0_prior(1,1:NY_LOCAL)) / scale_model(3)
+  flat_model(1:NY_LOCAL) = log(c0_prior(1,1:NY_LOCAL)) / scale_model(1)
   flat_model(NY_LOCAL+1:2*NY_LOCAL) = log(p0_prior(1,1:NY_LOCAL))/ scale_model(2)
-  flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(1,1:NY_LOCAL)/ scale_model(4)
+  flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(1,1:NY_LOCAL)/ scale_model(3)
   
 
   else

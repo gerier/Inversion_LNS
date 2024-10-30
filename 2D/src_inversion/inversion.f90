@@ -43,7 +43,7 @@ subroutine optimisation() ! TODO
     steepest_nbiter_default = mem_lbfgs
  endif
  
- do while (iter < maxiter .and. (abs(fx-fx_old)>1e-14) )
+ do while (iter < maxiter_outerloop .and. (abs(fx-fx_old)>1e-14) )
  
   if (rank == 0) then
     print *, "[Iteration ", iter, "]"
@@ -342,12 +342,12 @@ end subroutine
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine bestAlpha(alpha_hist,size_alpha_hist) ! Comment faire le array ? ne connait pas la taille 
-use parameters, only : x, r, alpha, x_new,fx_new,maxiter_backtracking,rank,code, MPI_COMM_WORLD
+use parameters, only : x, r, alpha, x_new,fx_new,maxiter_innerloop,rank,code, MPI_COMM_WORLD
 implicit none
 double precision :: f_best,best
 integer :: i 
 integer :: size_alpha_hist
-double precision, dimension(maxiter_backtracking,2) :: alpha_hist
+double precision, dimension(maxiter_innerloop,2) :: alpha_hist
 
  call MPI_BARRIER(MPI_COMM_WORLD, code)
  ! subroutine to find the alpha that minimise f(x+alpha*r)
@@ -370,11 +370,11 @@ endsubroutine bestAlpha
 
 subroutine backtracking()
 ! algorithm 3.1 p37 from Nocedal, 2006
-use parameters, only : alpha, Nflat,fx,fx_new,rate,maxiter_backtracking,x,r,x_new,fx_new,dfx_new,alpha_start,dfx_r
+use parameters, only : alpha, Nflat,fx,fx_new,rate,maxiter_innerloop,x,r,x_new,fx_new,dfx_new,alpha_start,dfx_r
 implicit none
  logical :: sufficientdecrease = .False.
  integer :: iter
- double precision, dimension(maxiter_backtracking,2) :: alpha_hist
+ double precision, dimension(maxiter_innerloop,2) :: alpha_hist
  integer :: size_alpha_hist
  logical :: wolfe1
  
@@ -387,7 +387,7 @@ implicit none
     sufficientdecrease = .False.
     iter = 1
  
-    do while ((.not. sufficientdecrease) .and. (iter < maxiter_backtracking)) 
+    do while ((.not. sufficientdecrease) .and. (iter < maxiter_innerloop)) 
         
         ! update
         call update(x, alpha, r, x_new)
@@ -407,7 +407,7 @@ implicit none
 
     enddo
      
-    if (iter == maxiter_backtracking) then
+    if (iter == maxiter_innerloop) then
         ! Backtracking fails to find alpha satisfying Armijo condition 
         print *, "ERROR : No acceptable step find in backtracking"
         print *, "iter = ", iter
@@ -427,14 +427,14 @@ endsubroutine backtracking
 
 subroutine zoom()
  ! algorithm 3.6 p61 from Nocedal, 2006
- use parameters, only : c1, c2, Nflat, alpha, alpha_low, alpha_high,maxiter_backtracking,&
+ use parameters, only : c1, c2, Nflat, alpha, alpha_low, alpha_high,maxiter_innerloop,&
                        x,fx,dfx_r,r,x_new,fx_new,dfx_new,rank,TINYVAL,HUGEVAL
  implicit none
  
  double precision, dimension(Nflat) :: x_low, x_high, dfx_low, dfx_high
  double precision :: fx_low, fx_high
 
- double precision, dimension(maxiter_backtracking,2) :: alpha_hist
+ double precision, dimension(maxiter_innerloop,2) :: alpha_hist
  integer :: size_alpha_hist
  
  logical :: stop_cond 
@@ -544,7 +544,7 @@ subroutine zoom()
        dfx_low = dfx_new
 
 
-       if (abs(alpha_low - alpha_high)<1e-15 .or. maxiter_backtracking <= size_alpha_hist) then
+       if (abs(alpha_low - alpha_high)<1e-15 .or. maxiter_innerloop <= size_alpha_hist) then
           ! if alpha_high too close of alpha_low, stop the algorithm and select an apha respecting the Armijo condition 
           call bestAlpha(alpha_hist,size_alpha_hist)
           call df(x_new,dfx_new) 
@@ -569,7 +569,7 @@ subroutine zoom()
        dfx_high = dfx_new
       
        
-       if (abs(alpha_low - alpha_high)<1e-15 .or. maxiter_backtracking <= size_alpha_hist) then
+       if (abs(alpha_low - alpha_high)<1e-15 .or. maxiter_innerloop <= size_alpha_hist) then
          ! if alpha_high too close of alpha_low, stop the algorithm and select the best apha from the tested ones
          call bestAlpha(alpha_hist,size_alpha_hist)
          call df(x_new,dfx_new) 

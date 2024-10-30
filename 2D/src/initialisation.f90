@@ -43,6 +43,108 @@ double precision :: z, rho,  c, p, grav, w_P, gamma_ratio, &
     enddo
   close(2)
 
+  if (method > 1) then
+    !!! 
+    ! PRIOR MODEL
+    !!!
+
+    ! Load atmospheric model from file
+    open(2,file=atmopsheric_file_name_prior, status='old', action='read')
+     read (2,*) ! to skip first line, with metadata
+     read (2,*) ! to skip first line, with metadata
+     read (2,*) ! to skip first line, with metadata
+   
+     ! load model line by line (or altitude by altitude)
+     do j = 2, NY
+        read(2,*)  z, rho, dummy1, c, p, dummy2, dummy3, dummy4, dummy5, dummy6, dummy7, &
+                  dummy8, dummy9, w_P, dummy10, dummy11, gamma_ratio
+                
+        if (j_rank == (j-1)/NY_LOCAL) then
+          ind=j - offset_j 
+          rho0_prior(:,ind)            = rho
+          p0_prior(:,ind)              = p
+          kappa_unrelaxed_prior(:,ind) = p * gamma_ratio
+          windx_prior(:,ind)           = w_P
+          windy_prior(:,ind)           = 0.d0
+        endif
+     enddo
+    close(2)
+  endif 
+
+ else ! Define model from informations of parameters.f90
+ 
+  !!! 
+  ! True model
+  !!!
+
+  gamma_chimie(:,:)         = gamma_chimie_value
+  rho0_true(:,:)            = density_true
+  p0_true(:,:)              = rho0_true(:,:) * (cp_unrelaxed_true*cp_unrelaxed_true) / gamma_chimie(:,:)
+  windx_true(:,:)           = windx_value_true
+  windy_true(:,:)           = 0.d0
+  g(:,:)                    = 0.d0
+  
+  !!! 
+  ! Priori model
+  !!!
+  
+  rho0_prior(:,:)            = density_prior
+  p0_prior(:,:)              = density_prior * (cp_unrelaxed_prior * cp_unrelaxed_prior) / gamma_chimie(:,:)
+  windx_prior(:,:)           = windx_value_prior
+  windy_prior(:,:)           = 0.0d0
+  
+endif  
+
+
+ ! PERTURBATION TO TRUE MODEL
+ do j = 1,NY_LOCAL
+    do i = 1,NX_LOCAL
+    
+      i_global = i + offset_i
+      j_global = j + offset_j 
+      
+      do i_perturb_model=1,NPERTURB_MODEL
+      
+        ! TODO: add blur on the shape of the perturbation to have a smoother model
+        
+        ! perturbation of rectangular shape
+        if (ADD_PERTURB_MODEL_INFO(i_perturb_model,1) == 1)then
+          i_min = ADD_PERTURB_MODEL_INFO(i_perturb_model,2) / DELTAX + 1
+          j_min = ADD_PERTURB_MODEL_INFO(i_perturb_model,3) / DELTAY + 1
+          i_max = ADD_PERTURB_MODEL_INFO(i_perturb_model,4) / DELTAX + 1
+          j_max = ADD_PERTURB_MODEL_INFO(i_perturb_model,5) / DELTAY + 1      
+          if (i_global >= i_min .and. i_global < i_max .and. j_global >= j_min .and. j_global < j_max ) then
+               rho0_true(i,j)            = rho0_true(i,j) * ADD_PERTURB_MODEL_INFO(i_perturb_model,6)
+    	       p0_true(i,j)              = rho0_true(i,j) * cp_unrelaxed_true*ADD_PERTURB_MODEL_INFO(i_perturb_model,7)&
+    	            *cp_unrelaxed_true*ADD_PERTURB_MODEL_INFO(i_perturb_model,7) / gamma_chimie(i,j)
+          endif
+        
+        ! perturbation of circular shape
+        elseif (ADD_PERTURB_MODEL_INFO(i_perturb_model,1) == 2) then
+          ! is the point in a circle 
+          x_circ = ADD_PERTURB_MODEL_INFO(i_perturb_model,2)
+          y_circ = ADD_PERTURB_MODEL_INFO(i_perturb_model,3)
+          dist2circ = sqrt( (((i_global+0.5)*DELTAX) - x_circ)**2 + (((j_global+0.5)*DELTAY) - y_circ)**2)
+          if ( dist2circ < ADD_PERTURB_MODEL_INFO(i_perturb_model,4) ) then
+    		rho0_true(i,j)            = rho0_true(i,j) * ADD_PERTURB_MODEL_INFO(i_perturb_model,6)
+    		p0_true(i,j)              = rho0_true(i,j) * cp_unrelaxed_prior*ADD_PERTURB_MODEL_INFO(i_perturb_model,7) &
+    		 *cp_unrelaxed_prior*ADD_PERTURB_MODEL_INFO(i_perturb_model,7) / gamma_chimie(i,j)
+          endif
+        endif
+      enddo
+      
+      ! to have a wind profil 
+       
+      if (add_wind_profile .and. (j_global > jmin_wind .and. j_global <= jmax_wind)) then 
+        windx_true(i,j) = exp(- ((j_global-1)*DELTAX/1e3 - mean_gauss_wind)**2 / sigma2_gauss_wind ) * max_wind_factor
+      endif
+          
+    enddo
+  enddo
+
+
+  ! BOUNDARY CONDITIONS
+  
   ! boundary conditions at the bottom
   if (j_rank == 0 .and. (.not. USE_PML_YMIN)) then
      do j=-1,1 
@@ -66,56 +168,8 @@ double precision :: z, rho,  c, p, grav, w_P, gamma_ratio, &
     enddo
   endif
   
-  call MPI_BARRIER(MPI_COMM_WORLD, code)
-
-  ! send information to neighboors
-  call send_receive_rightleft(windx_true)
-  call send_receive_rightleft(windy_true)
-  call send_receive_rightleft(rho0_true)
-  call send_receive_rightleft(p0_true)
-  call send_receive_rightleft(gamma_chimie)
-     
-  call send_receive_topbottom(windx_true)
-  call send_receive_topbottom(windy_true)
-  call send_receive_topbottom(rho0_true)
-  call send_receive_topbottom(p0_true)
-  call send_receive_topbottom(gamma_chimie)
-     
-  call send_receive_corners(windx_true) 
-  call send_receive_corners(windy_true)
-  call send_receive_corners(rho0_true)
-
-  ! write the background model
-  call write_background(rho0_true, kappa_unrelaxed_true, p0_true, windx_true, windy_true, gamma_chimie,g)
-
-
-  !!! 
-  ! PRIOR MODEL
-  !!!
-
-  ! Load atmospheric model from file
-  open(2,file=atmopsheric_file_name_prior, status='old', action='read')
-   read (2,*) ! to skip first line, with metadata
-   read (2,*) ! to skip first line, with metadata
-   read (2,*) ! to skip first line, with metadata
-   
-   ! load model line by line (or altitude by altitude)
-   do j = 2, NY
-      read(2,*)  z, rho, dummy1, c, p, dummy2, dummy3, dummy4, dummy5, dummy6, dummy7, &
-                dummy8, dummy9, w_P, dummy10, dummy11, gamma_ratio
-                
-      if (j_rank == (j-1)/NY_LOCAL) then
-        ind=j - offset_j 
-        rho0_prior(:,ind)            = rho
-        p0_prior(:,ind)              = p
-        kappa_unrelaxed_prior(:,ind) = p * gamma_ratio
-        windx_prior(:,ind)           = w_P
-        windy_prior(:,ind)           = 0.d0
-      endif
-   enddo
-  close(2)
-   
-  ! boundary conditions at the bottom
+  
+    ! boundary conditions at the bottom
   if (j_rank == 0) then
      do j=-1,1 
         rho0_prior(:,j) = rho0_prior(:,3-j)
@@ -133,101 +187,8 @@ double precision :: z, rho,  c, p, grav, w_P, gamma_ratio, &
     p0_prior(:,NY_LOCAL+j) = p0_prior(:,NY_LOCAL)
     enddo
   endif
-  
-  call MPI_BARRIER(MPI_COMM_WORLD, code)
-  
-  ! send information to neighboors
-  call send_receive_rightleft(windx_prior)
-  call send_receive_rightleft(windy_prior)
-  call send_receive_rightleft(rho0_prior)
-  call send_receive_rightleft(p0_prior)
-     
-  call send_receive_topbottom(windx_prior)
-  call send_receive_topbottom(windy_prior)
-  call send_receive_topbottom(rho0_prior)
-  call send_receive_topbottom(p0_prior)
-     
-  call send_receive_corners(windx_prior) 
-  call send_receive_corners(windy_prior)
-  call send_receive_corners(rho0_prior)
-
-  c0_prior(:,:) = sqrt(gamma_chimie(:,:)*p0_prior(:,:)/rho0_prior(:,:))
 
 
- else ! Define model from informations of parameters.f90
- 
-
-
-  !!! 
-  ! True model
-  !!!
-
-  gamma_chimie(:,:) = gamma_chimie_value
-  rho0_true(:,:)            = density 
-  p0_true(:,:)              = rho0_true(:,:) * (cp_unrelaxed*cp_unrelaxed) / gamma_chimie(:,:)
-  windx_true(:,:)           = 0.d0
-  windy_true(:,:)           = 0.d0
-  g(:,:)                    = 0.d0
-          
-  do j = 1,NY_LOCAL
-    do i = 1,NX_LOCAL
-    
-      i_global = i + offset_i
-      j_global = j + offset_j 
-      
-      do i_perturb_model=1,NPERTURB_MODEL
-      
-        ! TODO: add blur on the shape of the perturbation to have a smoother model
-        
-        ! perturbation of rectangular shape
-        if (ADD_PERTURB_MODEL_INFO(i_perturb_model,1) == 1)then
-          i_min = ADD_PERTURB_MODEL_INFO(i_perturb_model,2) / DELTAX + 1
-          j_min = ADD_PERTURB_MODEL_INFO(i_perturb_model,3) / DELTAY + 1
-          i_max = ADD_PERTURB_MODEL_INFO(i_perturb_model,4) / DELTAX + 1
-          j_max = ADD_PERTURB_MODEL_INFO(i_perturb_model,5) / DELTAY + 1      
-          if (i_global >= i_min .and. i_global < i_max .and. j_global >= j_min .and. j_global < j_max ) then
-               rho0_true(i,j)            = density * ADD_PERTURB_MODEL_INFO(i_perturb_model,6)
-    	       p0_true(i,j)              = rho0_true(i,j) * cp_unrelaxed*ADD_PERTURB_MODEL_INFO(i_perturb_model,7)&
-    	            *cp_unrelaxed*ADD_PERTURB_MODEL_INFO(i_perturb_model,7) / gamma_chimie(i,j)
-    		kappa_unrelaxed_true(i,j) = gamma_chimie(i,j) * p0_true(i,j)
-          endif
-        
-        ! perturbation of circular shape
-        elseif (ADD_PERTURB_MODEL_INFO(i_perturb_model,1) == 2) then
-          ! is the point in a circle 
-          x_circ = ADD_PERTURB_MODEL_INFO(i_perturb_model,2)
-          y_circ = ADD_PERTURB_MODEL_INFO(i_perturb_model,3)
-          dist2circ = sqrt( (((i_global+0.5)*DELTAX) - x_circ)**2 + (((j_global+0.5)*DELTAY) - y_circ)**2)
-          if ( dist2circ < ADD_PERTURB_MODEL_INFO(i_perturb_model,4) ) then
-    		rho0_true(i,j)            = density * ADD_PERTURB_MODEL_INFO(i_perturb_model,6)
-    		p0_true(i,j)              = rho0_true(i,j) * &
-    		    cp_unrelaxed*ADD_PERTURB_MODEL_INFO(i_perturb_model,7)*cp_unrelaxed*ADD_PERTURB_MODEL_INFO(i_perturb_model,7) &
-    		    / gamma_chimie(i,j)
-    		kappa_unrelaxed_true(i,j) = gamma_chimie(i,j) * p0_true(i,j)
-          endif
-        endif
-      enddo
-      
-      ! to have a wind profil 
-       
-      if (add_wind_profile .and. (j_global > jmin_wind .and. j_global <= jmax_wind)) then 
-        windx_true(i,j) = exp(- ((j_global-1)*DELTAX/1e3 - mean_gauss_wind)**2 / sigma2_gauss_wind ) * max_wind_factor
-      endif
-          
-    enddo
-  enddo
-
-  ! boundary conditions at the bottom
-  if (USE_PML_YMAX .and. j_rank == 0 .and. .not. USE_PML_YMIN) then
-    do j=-1,1
-      p0_true(:,j) = p0_true(:,3-j)
-      rho0_true(:,j) = rho0_true(:,3-j)
-      windx_true(:,j) = - windx_true(:,3-j)
-      g(:,j) = - g(:,3-j)
-      gamma_chimie(:,j) = gamma_chimie(:,3-j)
-    enddo
-  endif
-  
   call MPI_BARRIER(MPI_COMM_WORLD, code)
 
   ! send information to neighboors
@@ -248,32 +209,7 @@ double precision :: z, rho,  c, p, grav, w_P, gamma_ratio, &
   call send_receive_corners(rho0_true)
   call send_receive_corners(p0_true)
   
-  ! write the background model
-  call write_background(rho0_true, kappa_unrelaxed_true, p0_true, windx_true, windy_true, gamma_chimie,g)
-
-
-
-  !!! 
-  ! Priori model
-  !!!
-  
-  rho0_prior(:,:)            = density
-  p0_prior(:,:)              = density * (cp_unrelaxed * cp_unrelaxed) / gamma_chimie(:,:)
-  windx_prior(:,:)           = 0.0d0
-  windy_prior(:,:)           = 0.0d0
-  c0_prior(:,:)              = sqrt(gamma_chimie(:,:) * p0_prior(:,:) / rho0_prior(:,:)) 
-  
-  ! boundary conditions at the bottom
-  if (USE_PML_YMAX .and. j_rank == 0 .and. .not. USE_PML_YMIN) then
-    do j=-1,1
-      p0_prior(:,j) = p0_prior(:,3-j)
-      rho0_prior(:,j) = rho0_prior(:,3-j)
-      windx_prior(:,j) = - windx_prior(:,3-j)
-    enddo    
-  endif	
-	
-  call MPI_BARRIER(MPI_COMM_WORLD, code)
-
+ 
   ! send information to neighboors
   call send_receive_rightleft(windx_prior)
   call send_receive_rightleft(windy_prior)
@@ -288,16 +224,20 @@ double precision :: z, rho,  c, p, grav, w_P, gamma_ratio, &
   call send_receive_corners(windx_prior) 
   call send_receive_corners(windy_prior)
   call send_receive_corners(rho0_prior)
-  call send_receive_corners(p0_prior)    
+  call send_receive_corners(p0_prior)   
   
+  call MPI_BARRIER(MPI_COMM_WORLD, code)
+    
+  ! compute prior wave speed 
+  c0_prior(:,:) = sqrt(gamma_chimie(:,:)*p0_prior(:,:)/rho0_prior(:,:))
+
+
   ! write the background model
-  !call write_background(rho0_prior, kappa_unrelaxed_prior, p0_prior, windx_prior, windy_prior, gamma_chimie)
+  call write_background(rho0_true, kappa_unrelaxed_true, p0_true, windx_true, windy_true, gamma_chimie,g)
 
-endif
-
+  
 endsubroutine init_backgrounds
  
-
 
 subroutine init_source_recvrs() 
 

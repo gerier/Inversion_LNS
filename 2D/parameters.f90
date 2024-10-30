@@ -68,15 +68,14 @@ module parameters
 
   ! P-velocity and density
   ! the unrelaxed value is the value at frequency = 0 (the relaxed value would be the value at frequency = +infinity)
-  double precision, parameter :: cp_unrelaxed = 347.763977d0 
-  double precision, parameter :: density = 1.13837624d0 
-  double precision, parameter :: gamma_chimie_value = 1.4d0
-  logical, parameter :: add_wind_profile = .false.
-  
-  character(len=100) :: input_rho0_prior
-  character(len=100) :: input_c0_prior
-  character(len=100) :: input_windx_prior
-  character(len=100) :: input_windy_prior
+    double precision, parameter :: gamma_chimie_value = 1.4d0
+    double precision, parameter :: cp_unrelaxed_true = 347.763977d0 
+  double precision, parameter :: density_true = 1.13837624d0 
+  double precision, parameter :: windx_value_true = 0.0d0
+  double precision, parameter :: cp_unrelaxed_prior = 347.763977d0 
+  double precision, parameter :: density_prior = 1.13837624d0 
+  double precision, parameter :: windx_value_prior = 0.0d0
+ 
   
   ! add perturbation into the model
   !! perturbation correspond to a square or a circle, in which one of the parameter (c,rho) are multiplied by a factor
@@ -93,7 +92,7 @@ module parameters
                  !   (/ 2.d0,  7500.d0,  5000.d0,  1500.d0, 0.0d0,1.3d0,1.1d0/), (/7,NPERTURB_MODEL/))) 
                  
   
-
+  logical, parameter :: add_wind_profile = .false.
   ! wind can be modeled by a gaussian
   ! expression if the model needs 3 parameters : the mean of the gaussian, the variance and the amplitude of the wind
   ! we add also two parameters to cancel the wind at the extremities
@@ -342,12 +341,14 @@ module parameters
  !! 2 density, pressure, wind
  !! 3 log density, log celerity, wind
  !! 4 log density, log pressure, wind
- !! 5 log celerity, wind, log pressure
+ !! 5 log celerity, log pressure, wind
  integer, parameter :: parametrisation = 3
 
  ! contains the scaling to have x1,x2,x3 and x4 of the inversion varying in the same way
  ! x1: density, x2: pressure, x3: celerity, x4: windx
- integer, dimension(4), parameter :: scale_model = (/1,1,1,10/)
+ ! Ref : Nocedal, (2006) Numerical Optimisation. 
+ ! Scaling is defined in Scaling, page 26 (chapitre 2. Fundamentals of unconstrained optimization)
+ integer, dimension(4), parameter :: scale_model = (/1,1,1/)
  
  ! number of iterations to start with steepest descent direction
  integer :: steepest_nbiter_default = 5
@@ -384,10 +385,10 @@ module parameters
  ! define the factor of decreasing for the backtracking algorithm
  double precision, parameter :: rate = 0.8d0
  ! define the maximum number of iterations in the backtracking algorithm
- integer, parameter :: maxiter_backtracking = 50
+ integer, parameter :: maxiter_innerloop = 50
 
  ! define the maximum number of iterations in the main optimisation loop
- integer, parameter :: maxiter = 100
+ integer, parameter :: maxiter_outerloop = 100
  ! tolerance on the model x to stop the optimisation algorithm
  double precision :: tol_x = 1e-10
 

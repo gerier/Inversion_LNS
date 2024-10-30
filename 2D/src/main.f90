@@ -104,7 +104,7 @@ program main
 ! equation (7) and is equal to 0.606 (it is thus smaller than that of the O(2,2) scheme, which is 1/sqrt(2) = 0.707,
 ! i.e. when switching to a fourth-order spatial scheme one needs a time step that is about 0.707 / 0.606 = 1.167 times smaller.
   if (DELTAX == DELTAY) then
-    Courant_number = cp_unrelaxed * DELTAT / DELTAX
+    Courant_number = cp_unrelaxed_prior * DELTAT / DELTAX
     if (rank == 0) then
       print *,'Courant number is ',Courant_number
       print *,' (the maximum possible value is 0.606; in practice for accuracy reasons a value not larger than 0.30 is recommended)'
