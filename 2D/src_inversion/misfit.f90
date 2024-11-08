@@ -245,7 +245,6 @@ integer :: j
     stop  
   endif
   
-  flat_grad = flat_grad * DELTAX * DELTAY
 
 endsubroutine kernelparam2inversionparam
 
