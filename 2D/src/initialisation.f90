@@ -13,14 +13,14 @@ double precision :: z, rho,  c, p, grav, w_P, gamma_ratio, &
                        dummy7, dummy8, dummy9, dummy10, dummy11
 
  
- if (atmopsheric_model_file) then ! Define model from external file
+ if (atmospheric_model_file) then ! Define model from external file
   
   !!! 
   ! TRUE MODEL
   !!!
   
   ! Load atmospheric model from file
-  open(2,file=atmopsheric_file_name_true, status='old', action='read')
+  open(2,file=atmospheric_file_name_true, status='old', action='read')
     read (2,*) ! to skip first line, with metadata
     read (2,*) ! to skip first line, with metadata
     read (2,*) ! to skip first line, with metadata
@@ -49,7 +49,7 @@ double precision :: z, rho,  c, p, grav, w_P, gamma_ratio, &
     !!!
 
     ! Load atmospheric model from file
-    open(2,file=atmopsheric_file_name_prior, status='old', action='read')
+    open(2,file=atmospheric_file_name_prior, status='old', action='read')
      read (2,*) ! to skip first line, with metadata
      read (2,*) ! to skip first line, with metadata
      read (2,*) ! to skip first line, with metadata
@@ -103,39 +103,41 @@ endif
       i_global = i + offset_i
       j_global = j + offset_j 
       
-      do i_perturb_model=1,NPERTURB_MODEL
-      
-        ! TODO: add blur on the shape of the perturbation to have a smoother model
+      if NPERTURB_MODEL > 0 : 
+        do i_perturb_model=1,NPERTURB_MODEL
         
-        ! perturbation of rectangular shape
-        if (ADD_PERTURB_MODEL_INFO(i_perturb_model,1) == 1)then
-          i_min = ADD_PERTURB_MODEL_INFO(i_perturb_model,2) / DELTAX + 1
-          j_min = ADD_PERTURB_MODEL_INFO(i_perturb_model,3) / DELTAY + 1
-          i_max = ADD_PERTURB_MODEL_INFO(i_perturb_model,4) / DELTAX + 1
-          j_max = ADD_PERTURB_MODEL_INFO(i_perturb_model,5) / DELTAY + 1      
-          if (i_global >= i_min .and. i_global < i_max .and. j_global >= j_min .and. j_global < j_max ) then
-               rho0_true(i,j)            = rho0_true(i,j) * ADD_PERTURB_MODEL_INFO(i_perturb_model,6)
-    	       p0_true(i,j)              = rho0_true(i,j) * cp_unrelaxed_true*ADD_PERTURB_MODEL_INFO(i_perturb_model,7)&
-    	            *cp_unrelaxed_true*ADD_PERTURB_MODEL_INFO(i_perturb_model,7) / gamma_chimie(i,j)
+          ! TODO: add blur on the shape of the perturbation to have a smoother model
+          
+          ! perturbation of rectangular shape
+          if (ADD_PERTURB_MODEL_INFO(i_perturb_model,1) == 1)then
+            i_min = ADD_PERTURB_MODEL_INFO(i_perturb_model,2) / DELTAX + 1
+            j_min = ADD_PERTURB_MODEL_INFO(i_perturb_model,3) / DELTAY + 1
+            i_max = ADD_PERTURB_MODEL_INFO(i_perturb_model,4) / DELTAX + 1
+            j_max = ADD_PERTURB_MODEL_INFO(i_perturb_model,5) / DELTAY + 1      
+            if (i_global >= i_min .and. i_global < i_max .and. j_global >= j_min .and. j_global < j_max ) then
+                rho0_true(i,j)            = rho0_true(i,j) * ADD_PERTURB_MODEL_INFO(i_perturb_model,6)
+              p0_true(i,j)              = rho0_true(i,j) * cp_unrelaxed_true*ADD_PERTURB_MODEL_INFO(i_perturb_model,7)&
+                    *cp_unrelaxed_true*ADD_PERTURB_MODEL_INFO(i_perturb_model,7) / gamma_chimie(i,j)
+            endif
+          
+          ! perturbation of circular shape
+          elseif (ADD_PERTURB_MODEL_INFO(i_perturb_model,1) == 2) then
+            ! is the point in a circle 
+            x_circ = ADD_PERTURB_MODEL_INFO(i_perturb_model,2)
+            y_circ = ADD_PERTURB_MODEL_INFO(i_perturb_model,3)
+            dist2circ = sqrt( (((i_global+0.5)*DELTAX) - x_circ)**2 + (((j_global+0.5)*DELTAY) - y_circ)**2)
+            if ( dist2circ < ADD_PERTURB_MODEL_INFO(i_perturb_model,4) ) then
+          rho0_true(i,j)            = rho0_true(i,j) * ADD_PERTURB_MODEL_INFO(i_perturb_model,6)
+          p0_true(i,j)              = rho0_true(i,j) * cp_unrelaxed_prior*ADD_PERTURB_MODEL_INFO(i_perturb_model,7) &
+          *cp_unrelaxed_prior*ADD_PERTURB_MODEL_INFO(i_perturb_model,7) / gamma_chimie(i,j)
+            endif
           endif
-        
-        ! perturbation of circular shape
-        elseif (ADD_PERTURB_MODEL_INFO(i_perturb_model,1) == 2) then
-          ! is the point in a circle 
-          x_circ = ADD_PERTURB_MODEL_INFO(i_perturb_model,2)
-          y_circ = ADD_PERTURB_MODEL_INFO(i_perturb_model,3)
-          dist2circ = sqrt( (((i_global+0.5)*DELTAX) - x_circ)**2 + (((j_global+0.5)*DELTAY) - y_circ)**2)
-          if ( dist2circ < ADD_PERTURB_MODEL_INFO(i_perturb_model,4) ) then
-    		rho0_true(i,j)            = rho0_true(i,j) * ADD_PERTURB_MODEL_INFO(i_perturb_model,6)
-    		p0_true(i,j)              = rho0_true(i,j) * cp_unrelaxed_prior*ADD_PERTURB_MODEL_INFO(i_perturb_model,7) &
-    		 *cp_unrelaxed_prior*ADD_PERTURB_MODEL_INFO(i_perturb_model,7) / gamma_chimie(i,j)
-          endif
-        endif
-      enddo
+        enddo
+      endif
       
       ! to have a wind profil 
        
-      if (add_wind_profile .and. (j_global > jmin_wind .and. j_global <= jmax_wind)) then 
+      if (add_windperturb_profile .and. (j_global > jmin_wind .and. j_global <= jmax_wind)) then 
         windx_true(i,j) = exp(- ((j_global-1)*DELTAX/1e3 - mean_gauss_wind)**2 / sigma2_gauss_wind ) * max_wind_factor
       endif
           

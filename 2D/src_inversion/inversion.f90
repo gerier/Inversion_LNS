@@ -63,7 +63,7 @@ subroutine optimisation() ! TODO
     endif
 
    ! initialise a first step
-    if (iter == 1.0d0) then
+    if (iter == 1) then
       alpha_start = 1.0d0
     else 
       alpha_start = min(1.d0, 1.01d0 * 2.d0 * (fx - fx_old) / dfx_r)
@@ -79,7 +79,7 @@ subroutine optimisation() ! TODO
       print *, 'New fx :', fx_new, '(', rank, ')'
     endif
  
-  else ! compute the conjugate gradient
+  else ! compute the non linear conjugate gradient ou L-BFGS for getting the descent direction
   
     ! use the conjugate gradient
     ! first, check if descent direction can be applied (test if descent direction will not be equal to infinity)

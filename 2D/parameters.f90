@@ -84,10 +84,10 @@ module parameters
 
 
 
-  logical, parameter :: atmopsheric_model_file = .true.
-   character(len=200) :: atmopsheric_file_name_true = &
+  logical, parameter :: atmospheric_model_file = .true.
+   character(len=200) :: atmospheric_file_name_true = &
      "./model_target.dat" !  !!! CHANGE _grav.dat"
-   character(len=200) :: atmopsheric_file_name_prior = & 
+   character(len=200) :: atmospheric_file_name_prior = & 
      "./model.dat"
 
   ! P-velocity and density
@@ -116,7 +116,7 @@ module parameters
                  !   (/ 2.d0,  7500.d0,  5000.d0,  1500.d0, 0.0d0,1.3d0,1.1d0/), (/7,NPERTURB_MODEL/))) 
                  
   
-  logical, parameter :: add_wind_profile = .false.
+  logical, parameter :: add_windperturb_profile = .false.
   ! wind can be modeled by a gaussian
   ! expression if the model needs 3 parameters : the mean of the gaussian, the variance and the amplitude of the wind
   ! we add also two parameters to cancel the wind at the extremities
@@ -340,18 +340,23 @@ module parameters
  integer, parameter :: Nflat = 3*NY_LOCAL 
 
  ! parameters of the inversion
- !! 1 density, wave speed, wind
- !! 2 density, pressure, wind
- !! 3 log density, log celerity, wind
- !! 4 log density, log pressure, wind
- !! 5 log celerity, log pressure, wind
+ !! 1 density, celerity (wave speed), windx
+ !! 2 density, pressure, windx
+ !! 3 log density, log celerity, windx
+ !! 4 log density, log pressure, windx
+ !! 5 log celerity, log pressure, windx
  integer, parameter :: parametrisation = 3
 
- ! contains the scaling to have x1,x2,x3 and x4 of the inversion varying in the same way
- ! x1: density, x2: pressure, x3: celerity, x4: windx
+ ! contains the scaling to have x1, x2, and x3 of the inversion varying in the same way
+ ! Depend on the chosen parameterization :
+  ! if parametrisation == 1 then x1: density, x2: celerity, x3: windx (choose 1,100,1)
+  ! if parametrisation == 2 then x1: density, x2: pressure, x3: windx (choose 1,1e5,1)
+  ! if parametrisation == 3 then x1: log density, x2: log celerity, x3: windx (choose 1,1,1)
+  ! if parametrisation == 4 then x1: log density, x2: log pressure, x3: windx (choose 1,1,1)
+  ! if parametrisation == 5 then x1: log celerity, x2: log pressure, x3: windx (choose 1,1,1)
  ! Ref : Nocedal, (2006) Numerical Optimisation. 
  ! Scaling is defined in Scaling, page 26 (chapitre 2. Fundamentals of unconstrained optimization)
- integer, dimension(4), parameter :: scale_model = (/1,1,1,1/)
+ integer, dimension(3), parameter :: scale_model = (/1,1,1/)
  
  ! number of iterations to start with steepest descent direction
  integer :: steepest_nbiter_default = 5
@@ -387,7 +392,7 @@ module parameters
   
  ! define the factor of decreasing for the backtracking algorithm
  double precision, parameter :: rate = 0.8d0
- ! define the maximum number of iterations in the backtracking algorithm
+ ! define the maximum number of iterations in the backtracking and linesearch/zoom algorithm
  integer, parameter :: maxiter_innerloop = 50
 
  ! define the maximum number of iterations in the main optimisation loop
