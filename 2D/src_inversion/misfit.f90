@@ -33,7 +33,7 @@ enddo
  call MPI_BARRIER(MPI_COMM_WORLD, code)
  call MPI_ALLREDUCE(sum(fm_local_per_rec), fm, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
 
- fm = DELTAT * fm / 2
+ fm = DELTAT * DELTAX * DELTAY * fm / 2
  fx_data = fm 
 
  count_f = count_f + 1
@@ -119,6 +119,10 @@ double precision :: scalar_grad_lnrho0, scalar_grad_lnc0, scalar_grad_lnp0, &
                 scalar_grad_rho0, scalar_grad_c0, scalar_grad_p0, &
                 scalar_grad_windx
 integer :: j
+
+  K_rho0(:,:) = K_rho0(:,:) * DELTAX * DELTAY
+  K_p0(:,:) = K_p0(:,:) * DELTAX * DELTAY
+  K_windx(:,:) = K_windx(:,:) * DELTAX * DELTAY
 
   if (parametrisation == 1) then
     ! density, wind, velocity

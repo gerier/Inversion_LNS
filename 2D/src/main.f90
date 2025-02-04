@@ -160,7 +160,7 @@ program main
    sispressure_true(:,:) = sispressure(:,:) 
    
    do irec=1,NREC
-    normsq_pressure_true_per_rec(irec) = sum(sispressure_true(:,irec)**2)
+    normsq_pressure_true_per_rec(irec) = DELTAT * DELTAX *DELTAY * sum(sispressure_true(:,irec)**2)
    enddo
      
    ! compute kernel
@@ -185,7 +185,7 @@ program main
      ! get normalisation informations from observations
      sispressure_true(:,:) = sispressure(:,:) 
      do irec=1,NREC
-       normsq_pressure_true_per_rec(irec) = sum(sispressure_true(:,irec)**2)
+       normsq_pressure_true_per_rec(irec) = DELTAT * DELTAX * DELTAY * sum(sispressure_true(:,irec)**2)
      enddo
 
      ! atmospheric model is saved in a vector form for inverse problem

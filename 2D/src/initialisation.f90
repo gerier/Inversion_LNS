@@ -103,7 +103,7 @@ endif
       i_global = i + offset_i
       j_global = j + offset_j 
       
-      if NPERTURB_MODEL > 0 : 
+      if (NPERTURB_MODEL > 0) then 
         do i_perturb_model=1,NPERTURB_MODEL
         
           ! TODO: add blur on the shape of the perturbation to have a smoother model
