@@ -351,7 +351,7 @@ module parameters
  ! x1: density, x2: pressure, x3: celerity, x4: windx
  ! Ref : Nocedal, (2006) Numerical Optimisation. 
  ! Scaling is defined in Scaling, page 26 (chapitre 2. Fundamentals of unconstrained optimization)
- integer, dimension(4), parameter :: scale_model = (/1,1,1/)
+ integer, dimension(4), parameter :: scale_model = (/1,1,1,1/)
  
  ! number of iterations to start with steepest descent direction
  integer :: steepest_nbiter_default = 5
