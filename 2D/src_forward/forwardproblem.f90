@@ -205,16 +205,16 @@ implicit none
        ! derivative updates for PML
        value_dvx_dx = value_dvx_dx * one_over_K_x_half(i_global) + eq1_memory_dvx_dx_fw(i,j)
        value_dvy_dy = value_dvy_dy * one_over_K_y(j_global) + eq1_memory_dvy_dy_fw(i,j) 
-       value_dwindx_dx = value_dwindx_dx * one_over_K_x_half(i_global) + eq1_memory_dwindx_dx_fw(i,j)
-       value_dwindy_dy = value_dwindy_dy * one_over_K_y(j_global) + eq1_memory_dwindy_dy_fw(i,j) 
+       value_dwindx_dx = value_dwindx_dx * one_over_Kdalpha_x_half(i_global) !+ eq1_memory_dwindx_dx_fw(i,j)
+       value_dwindy_dy = value_dwindy_dy * one_over_Kdalpha_y(j_global) !+ eq1_memory_dwindy_dy_fw(i,j) 
         
-       value_dp0_dx = value_dp0_dx * one_over_K_x_half(i_global) + eq1_memory_dp0_dx_fw(i,j)
-       value_drho0_dx = value_drho0_dx * one_over_K_x_half(i_global) + eq1_memory_drho0_dx_fw(i,j)
+       value_dp0_dx = value_dp0_dx * one_over_Kdalpha_x_half(i_global) !+ eq1_memory_dp0_dx_fw(i,j)
+       value_drho0_dx = value_drho0_dx * one_over_Kdalpha_x_half(i_global)! + eq1_memory_drho0_dx_fw(i,j)
        value_dpressure_dx = value_dpressure_dx * one_over_K_x_half(i_global) + eq1_memory_dpressure_dx_fw(i,j)
        value_drhop_dx = value_drhop_dx * one_over_K_x_half(i_global) + eq1_memory_drhop_dx_fw(i,j)
         
-       value_dp0_dy = value_dp0_dy * one_over_K_y(j_global) + eq1_memory_dp0_dy_fw(i,j) 
-       value_drho0_dy = value_drho0_dy * one_over_K_y(j_global) + eq1_memory_drho0_dy_fw(i,j) 
+       value_dp0_dy = value_dp0_dy * one_over_Kdalpha_y(j_global) !+ eq1_memory_dp0_dy_fw(i,j) 
+       value_drho0_dy = value_drho0_dy * one_over_Kdalpha_y(j_global) !+ eq1_memory_drho0_dy_fw(i,j) 
        value_dpressure_dy = value_dpressure_dy * one_over_K_y(j_global) + eq1_memory_dpressure_dy_fw(i,j) 
        value_drhop_dy = value_drhop_dy * one_over_K_y(j_global) + eq1_memory_drhop_dy_fw(i,j)        
         
@@ -462,17 +462,17 @@ implicit none
 
      ! derivative updates for PML
      value_dpressure_dx = value_dpressure_dx * one_over_K_x(i_global) + eq2_memory_dpressure_dx_fw(i,j)
-     value_drho0_dx = value_drho0_dx * one_over_K_x(i_global) + eq2_memory_drho0_dx_fw(i,j)
+     value_drho0_dx = value_drho0_dx * one_over_Kdalpha_x(i_global)! + eq2_memory_drho0_dx_fw(i,j)
      
      value_dvx_dx = value_dvx_dx * one_over_K_x(i_global) + eq2_memory_dvx_dx_fw(i,j)
-     value_dwindx_dx = value_dwindx_dx * one_over_K_x(i_global) + eq2_memory_dwindx_dx_fw(i,j)
+     value_dwindx_dx = value_dwindx_dx * one_over_Kdalpha_x(i_global)! + eq2_memory_dwindx_dx_fw(i,j)
      
      value_dvx_dy = value_dvx_dy * one_over_K_y(j_global) + eq2_memory_dvx_dy_fw(i,j)
-     value_dwindx_dy = value_dwindx_dy * one_over_K_y(j_global) + eq2_memory_dwindx_dy_fw(i,j)
+     value_dwindx_dy = value_dwindx_dy * one_over_Kdalpha_y(j_global) !+ eq2_memory_dwindx_dy_fw(i,j)
      
-     value_drho0_dy = value_drho0_dy * one_over_K_y(j_global) + eq2_memory_drho0_dy_fw(i,j)
+     value_drho0_dy = value_drho0_dy * one_over_Kdalpha_y(j_global)! + eq2_memory_drho0_dy_fw(i,j)
 
-     value_dwindy_dy = value_dwindy_dy * one_over_K_y(j_global) + eq2_memory_dwindy_dy_fw(i,j)
+     value_dwindy_dy = value_dwindy_dy * one_over_Kdalpha_y(j_global)! + eq2_memory_dwindy_dy_fw(i,j)
           
      
      ! intermediate computations: (v0 . nabla) v0_x ; (v' . nabla) v0_x ; (v0 . nabla) v0_x
@@ -611,17 +611,17 @@ implicit none
       
       ! derivative updates for PML
       value_dpressure_dy = value_dpressure_dy * one_over_K_y_half(j_global) + eq3_memory_dpressure_dy_fw(i,j)
-      value_drho0_dy = value_drho0_dy * one_over_K_y_half(j_global) + eq3_memory_drho0_dy_fw(i,j)
+      value_drho0_dy = value_drho0_dy * one_over_Kdalpha_y_half(j_global) !+ eq3_memory_drho0_dy_fw(i,j)
       
       value_dvy_dy = value_dvy_dy *  one_over_K_y_half(j_global) + eq3_memory_dvy_dy_fw(i,j)
-      value_dwindy_dy = value_dwindy_dy *  one_over_K_y_half(j_global) + eq3_memory_dwindy_dy_fw(i,j)
+      value_dwindy_dy = value_dwindy_dy *  one_over_Kdalpha_y_half(j_global) !+ eq3_memory_dwindy_dy_fw(i,j)
       
       value_dvy_dx = value_dvy_dx *  one_over_K_x_half(i_global) + eq3_memory_dvy_dx_fw(i,j)
-      value_dwindy_dx = value_dwindy_dx *  one_over_K_x_half(i_global) + eq3_memory_dwindy_dx_fw(i,j)
+      value_dwindy_dx = value_dwindy_dx *  one_over_Kdalpha_x_half(i_global) !+ eq3_memory_dwindy_dx_fw(i,j)
       
-      value_drho0_dx = value_drho0_dx * one_over_K_x_half(i_global) + eq3_memory_drho0_dx_fw(i,j)
+      value_drho0_dx = value_drho0_dx * one_over_Kdalpha_x_half(i_global)! + eq3_memory_drho0_dx_fw(i,j)
       
-      value_dwindx_dx = value_dwindx_dx * one_over_K_x_half(i_global) + eq3_memory_dwindx_dx_fw(i,j)
+      value_dwindx_dx = value_dwindx_dx * one_over_Kdalpha_x_half(i_global) !+ eq3_memory_dwindx_dx_fw(i,j)
       
       
       ! intermediate computations: (v0 . nabla) v0_y ; (v' . nabla) v0_y ; (v0 . nabla) v0_y

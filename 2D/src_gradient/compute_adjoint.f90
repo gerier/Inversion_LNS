@@ -230,26 +230,26 @@ subroutine compute_adjoint(it_step)
 
     ! PML treatment of derivatives
     value_drhoa_dx     = value_drhoa_dx     * one_over_K_x(i_global) + eq1_memory_drhoa_dx_adj(i,j)  
-    value_dp0_dx       =  value_dp0_dx      * one_over_K_x(i_global) + eq1_memory_dp0_dx_adj(i,j)
+    value_dp0_dx       =  value_dp0_dx      * one_over_Kdalpha_x(i_global) !+ eq1_memory_dp0_dx_adj(i,j)
     value_dgammap0pa_dx= value_dgammap0pa_dx* one_over_K_x(i_global) + eq1_memory_dgammap0pa_dx_adj(i,j) 
     
     value_dvax_dy      = value_dvax_dy      * one_over_K_x(i_global) + eq1_memory_dvax_dy_adj(i,j)
 
-    value_dwindx_dx    = value_dwindx_dx    * one_over_K_x(i_global) + eq1_memory_dwindx_dx_adj(i,j)
+    value_dwindx_dx    = value_dwindx_dx    * one_over_Kdalpha_x(i_global)! + eq1_memory_dwindx_dx_adj(i,j)
     value_dvax_dx      = value_dvax_dx      * one_over_K_x(i_global) + eq1_memory_dvax_dx_adj(i,j) 
 
-    value_dwindy_dx    = value_dwindy_dx    * one_over_K_x(i_global) + eq1_memory_dwindy_dx_adj(i,j)
+    value_dwindy_dx    = value_dwindy_dx    * one_over_Kdalpha_x(i_global) !+ eq1_memory_dwindy_dx_adj(i,j)
     
     value_drhoa_dy     = value_drhoa_dy     * one_over_K_y_half(j_global) + eq1_memory_drhoa_dy_adj(i,j)
-    value_dp0_dy       = value_dp0_dy       * one_over_K_y_half(j_global) + eq1_memory_dp0_dy_adj(i,j)  
-    value_dgammap0pa_dy     = value_dgammap0pa_dy     * one_over_K_y_half(j_global) + eq1_memory_dgammap0pa_dy_adj(i,j)  
+    value_dp0_dy       = value_dp0_dy       * one_over_Kdalpha_y_half(j_global)! + eq1_memory_dp0_dy_adj(i,j)  
+    value_dgammap0pa_dy     = value_dgammap0pa_dy * one_over_K_y_half(j_global) + eq1_memory_dgammap0pa_dy_adj(i,j)  
 
     value_dvay_dx      = value_dvay_dx      * one_over_K_y_half(j_global) + eq1_memory_dvay_dx_adj(i,j) 
 
-    value_dwindy_dy    = value_dwindy_dy    * one_over_K_y_half(j_global) + eq1_memory_dwindy_dy_adj(i,j) 
+    value_dwindy_dy    = value_dwindy_dy    * one_over_Kdalpha_y_half(j_global) !+ eq1_memory_dwindy_dy_adj(i,j) 
     value_dvay_dy      = value_dvay_dy      * one_over_K_y_half(j_global) + eq1_memory_dvay_dy_adj(i,j)
        
-    value_dwindx_dy    = value_dwindx_dy    * one_over_K_y_half(j_global) + eq1_memory_dwindx_dy_adj(i,j)
+    value_dwindx_dy    = value_dwindx_dy    * one_over_Kdalpha_y_half(j_global) !+ eq1_memory_dwindx_dy_adj(i,j)
     
     
     ! intermediate computations    
@@ -454,13 +454,13 @@ subroutine compute_adjoint(it_step)
     value_drhoa_dx   = value_drhoa_dx   * one_over_K_x_half(i_global) + eq2_memory_drhoa_dx_adj(i,j) 
     value_drhoa_dy   = value_drhoa_dy   * one_over_K_y(j_global)      + eq2_memory_drhoa_dy_adj(i,j)
     
-    value_dwindx_dx     = value_dwindx_dx * one_over_K_x_half(i_global) + eq2_memory_dwindx_dx_adj(i,j)
+    value_dwindx_dx     = value_dwindx_dx * one_over_Kdalpha_x_half(i_global)! + eq2_memory_dwindx_dx_adj(i,j)
     value_dvax_dx       = value_dvax_dx   * one_over_K_x_half(i_global) + eq2_memory_dvax_dx_adj(i,j)
-    value_dwindy_dy     = value_dwindy_dy * one_over_K_y(j_global)      + eq2_memory_dwindy_dy_adj(i,j)
+    value_dwindy_dy     = value_dwindy_dy * one_over_Kdalpha_y(j_global)     ! + eq2_memory_dwindy_dy_adj(i,j)
     value_dvay_dy       = value_dvay_dy   * one_over_K_y(j_global)      + eq2_memory_dvay_dy_adj(i,j)
     
-    value_dwindy_dx     = value_dwindy_dx * one_over_K_x_half(i_global) + eq2_memory_dwindy_dx_adj(i,j)
-    value_dwindx_dy     = value_dwindx_dy * one_over_K_y(j_global)      + eq2_memory_dwindx_dy_adj(i,j)
+    value_dwindy_dx     = value_dwindy_dx * one_over_Kdalpha_x_half(i_global)! + eq2_memory_dwindy_dx_adj(i,j)
+    value_dwindx_dy     = value_dwindx_dy * one_over_Kdalpha_y(j_global)     ! + eq2_memory_dwindx_dy_adj(i,j)
     
 
     ! intermediate computation

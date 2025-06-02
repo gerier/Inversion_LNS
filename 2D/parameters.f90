@@ -10,11 +10,11 @@ module parameters
  
  
 ! total number of grid points in each direction of the grid
-  integer, parameter :: NY = 396
-  integer, parameter :: NX = 504
+  integer, parameter :: NY = 592
+  integer, parameter :: NX = 1008
 
-  integer, parameter :: NPROC_X = 12 !! 20
-  integer, parameter :: NPROC_Y = 12 !! 20
+  integer, parameter :: NPROC_X = 24 !! 20
+  integer, parameter :: NPROC_Y = 16 !! 20
   integer, parameter :: NPROC = NPROC_X * NPROC_Y !! 20
   
   integer, parameter :: NX_LOCAL = NX / NPROC_X
@@ -38,7 +38,7 @@ module parameters
   double precision, parameter :: DELTAT = 0.05d0
 
 ! total number of time steps
-  integer, parameter :: NSTEP = 4200
+  integer, parameter :: NSTEP = 5000
 
 ! parameters for the source
   double precision, parameter :: f0 = 0.1d0
@@ -52,7 +52,7 @@ module parameters
   ! if type_source == 1 
   integer, parameter :: wavefront = 2 ! 1. Wavefront in x direction, 2. Wavefront in y direction
   ! if type_source == 1,2 or 3
-  double precision, parameter :: xsource = 4000.d0
+  double precision, parameter :: xsource = 37000.d0
   double precision, parameter :: ysource = 300.d0
   integer, parameter :: ISOURCE = xsource / DELTAX + 1
   integer, parameter :: JSOURCE = ysource / DELTAY + 1
@@ -217,9 +217,9 @@ module parameters
   double precision, parameter :: ALPHA_MAX_PML = 2.d0*PI*(f0/2.d0) ! from Festa and Vilotte
   ! 1D arrays for the damping profiles
   double precision, dimension(1:NX) :: d_x,K_x,alpha_x,a_x,b_x,d_x_half,K_x_half,alpha_x_half,a_x_half,b_x_half,c_x,c_x_half, &
-                                     one_over_K_x,one_over_K_x_half
+                                     one_over_K_x,one_over_K_x_half,one_over_Kdalpha_x,one_over_Kdalpha_x_half
   double precision, dimension(1:NY) :: d_y,K_y,alpha_y,a_y,b_y,d_y_half,K_y_half,alpha_y_half,a_y_half,b_y_half,c_y,c_y_half, &
-                                     one_over_K_y,one_over_K_y_half
+                                     one_over_K_y,one_over_K_y_half,one_over_Kdalpha_y,one_over_Kdalpha_y_half
 
   double precision :: thickness_PML_x,thickness_PML_y,xoriginleft,xoriginright,yoriginbottom,yorigintop
   double precision :: Rcoef,d0_x,d0_y,xval,yval,abscissa_in_PML,abscissa_normalized
@@ -343,9 +343,10 @@ module parameters
  !! 1 density, celerity (wave speed), windx
  !! 2 density, pressure, windx
  !! 3 log density, log celerity, windx
+ !! 35 log density, wave speed, windx
  !! 4 log density, log pressure, windx
  !! 5 log celerity, log pressure, windx
- integer, parameter :: parametrisation = 3
+ integer, parameter :: parametrisation = 35
 
  ! contains the scaling to have x1, x2, and x3 of the inversion varying in the same way
  ! Depend on the chosen parameterization :
@@ -356,7 +357,7 @@ module parameters
   ! if parametrisation == 5 then x1: log celerity, x2: log pressure, x3: windx (choose 1,1,1)
  ! Ref : Nocedal, (2006) Numerical Optimisation. 
  ! Scaling is defined in Scaling, page 26 (chapitre 2. Fundamentals of unconstrained optimization)
- integer, dimension(3), parameter :: scale_model = (/1,1,1/)
+ double precision, dimension(3), parameter :: scale_model = (/1.0d0,100.0d0,100.0d0/)
  
  ! number of iterations to start with steepest descent direction
  integer :: steepest_nbiter_default = 5
@@ -375,12 +376,12 @@ module parameters
  double precision, dimension(mem_lbfgs,1:Nflat) :: S_list, Y_list
  
  ! add a term of regularisation of the cost function of the inverse problem
- integer, parameter :: type_regul_term = 1 ! 0. None
+ integer, parameter :: type_regul_term = 0 ! 0. None
                                            ! 1. Norm of current model - a priori model, 
                                            ! 2. (Not implemented - gradient),
                                            ! 3. (Not implemented - laplacian)  
  double precision, parameter :: regul_weight = 0.0000010d0
- double precision, dimension(Nflat) :: factor_regul_SRdist
+ double precision, dimension(1:Nflat) :: factor_regul_SRdist
  
  double precision :: alpha_start, alpha, alpha_prec, alpha_low, alpha_high
  

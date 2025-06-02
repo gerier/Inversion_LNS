@@ -28,10 +28,10 @@ subroutine optimisation() ! TODO
 
  ! initialisation 
  x(:) = m0(:) 
- call save_info_inversion(0)
  call f(x,fx)
  call df(x,dfx) 
-
+ call save_info_inversion(0)
+        
  x_old(:) = 1e6 * x(:)
  fx_old = 1e10
  dfx_old(:) = 0
@@ -130,7 +130,8 @@ subroutine optimisation() ! TODO
   x(:) = x_new(:)
   fx = fx_new    
   dfx(:) = dfx_new(:)
- 
+
+  call f(x,x_new) 
   call save_info_inversion(iter)
   call MPI_BARRIER(MPI_COMM_WORLD, code)
 
@@ -155,7 +156,7 @@ subroutine get_descent_direction(conj_number)
   implicit none
   double precision :: beta,eta,gama,tau,rho
   integer :: conj_number,i
-  double precision, dimension(Nflat) :: y,s, h0_diag,q
+  double precision, dimension(1:Nflat) :: y,s, h0_diag,q
   double precision :: dfx_dfx, dfx_old_dfx_old, dfx_y, y_r_old, dfx_r_old,y_y,y_s, r_old_r_old, dfx_s,s_q,y_r
   double precision, dimension(mem_lbfgs) :: a
   
@@ -431,7 +432,7 @@ subroutine zoom()
                        x,fx,dfx_r,r,x_new,fx_new,dfx_new,rank,TINYVAL,HUGEVAL
  implicit none
  
- double precision, dimension(Nflat) :: x_low, x_high, dfx_low, dfx_high
+ double precision, dimension(1:Nflat) :: x_low, x_high, dfx_low, dfx_high
  double precision :: fx_low, fx_high
 
  double precision, dimension(maxiter_innerloop,2) :: alpha_hist
@@ -643,11 +644,10 @@ subroutine median_filter(u,mask_dim)
                                                                        
   if (mask_dim == 1) then
     u_old(:) = u(1,:)
-    do j=1,NY_LOCAL
+    do j=3,NY_LOCAL-1
       imageA = u_old(j-2:j+2)
       call sort(imageA,5)
       u(:,j) = imageA(3)
-   
     enddo
   endif
  
@@ -677,10 +677,10 @@ subroutine smoothing(x) ! TODO
   use parameters, only : Nflat,c0_prior,rho0_prior,p0_prior,windx_prior,gamma_chimie, &
                              NX_LOCAL,NY_LOCAL,type_smoothing
   implicit none
-  double precision, dimension(Nflat), intent(inout) :: x
+  double precision, dimension(1:Nflat), intent(inout) :: x
   call flatmodel2priormodel(x)
   ! apply a mean, gaussian or median filter to smooth the solution x 
-  
+
   if (type_smoothing == 1) then
   ! mean filter is applied
     call mean_filter(rho0_prior,1)
@@ -713,7 +713,7 @@ endsubroutine smoothing
 subroutine update(x,alpha,p,x_new) 
  use parameters, only : Nflat,MPI_COMM_WORLD, code
  implicit none
- double precision, dimension(Nflat) :: x, p, x_new
+ double precision, dimension(1:Nflat) :: x, p, x_new
  double precision :: alpha 
  ! update the current solution witht the descent direction and the line search step 
  if (alpha == 0) then
@@ -721,10 +721,10 @@ subroutine update(x,alpha,p,x_new)
  else 
    x_new = x + alpha * p
    call MPI_BARRIER(MPI_COMM_WORLD, code)
+  call flatmodel2priormodel(x)
  
    ! smooth the solution because of artefacts due to on-linearity at the source and at the adjoint sources
-   call smoothing(x_new)
-   call MPI_BARRIER(MPI_COMM_WORLD, code)
+
  endif
 endsubroutine update
 

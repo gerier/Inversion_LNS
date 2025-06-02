@@ -6,7 +6,7 @@
   subroutine write_background(rho0, kappa_unrelaxed, p0, windx, windy, gamma_chimie,g)
   
     use mpi
-    use parameters, only : NX_LOCAL,NY_LOCAL,rank,NPROC_Y,code
+    use parameters, only : NX_LOCAL,NY_LOCAL,rank,NPROC_Y,code, i_rank
     implicit none
     integer j,rk,ii,jj
     double precision, dimension(-1:NX_LOCAL+2, -1:NY_LOCAL+2) :: rho0, kappa_unrelaxed, p0, windx, windy,g
@@ -24,41 +24,42 @@
     call mpi_barrier(mpi_comm_world,code)
     enddo
     
+   if (i_rank == 0) then
     write(file_name, "('./MODELS/rho0_true_',i6.6,'.txt')") rank
     OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
+    DO ii=1,1 !NX_LOCAL
       WRITE(12,*) (rho0(ii,jj), jj=1,NY_LOCAL)
     END DO
     CLOSE(12)
     
         write(file_name, "('./MODELS/p0_true_',i6.6,'.txt')") rank
     OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
+    DO ii=1,1 !NX_LOCAL
       WRITE(12,*) (p0(ii,jj), jj=1,NY_LOCAL)
     END DO
     CLOSE(12)
     
         write(file_name, "('./MODELS/windx_true_',i6.6,'.txt')") rank
     OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
+    DO ii=1,1 !NX_LOCAL
       WRITE(12,*) (windx(ii,jj), jj=1,NY_LOCAL)
     END DO
     CLOSE(12)
     
             write(file_name, "('./MODELS/windy_true_',i6.6,'.txt')") rank
     OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
+    DO ii=1,1 !NX_LOCAL
       WRITE(12,*) (windy(ii,jj), jj=1,NY_LOCAL)
     END DO
     CLOSE(12)
             
     write(file_name, "('./MODELS/g_',i6.6,'.txt')") rank
     OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
+    DO ii=1,1 !NX_LOCAL
       WRITE(12,*) (g(ii,jj), jj=1,NY_LOCAL)
     END DO
     CLOSE(12)
-    
+    endif
     
   endsubroutine write_background
   
@@ -168,6 +169,48 @@
 
 
   end subroutine write_seismograms
+
+
+
+subroutine write_seismograms_inversion(sispressure,nt,nrec,DELTAT,t0, it_inv)
+
+  use MPI
+  use parameters, only : ix_rec,iy_rec,NX_LOCAL,NY_LOCAL,i_rank,j_rank, code
+  implicit none
+
+  integer nt,nrec,it_inv
+  double precision DELTAT,t0
+
+
+  double precision sispressure(nt,nrec)
+
+
+  integer irec,it
+
+  character(len=100) file_name
+
+  call mpi_barrier(mpi_comm_world, code)
+
+  do irec=1,nrec
+    if (i_rank == (ix_rec(irec)-1)/NX_LOCAL .and. j_rank == (iy_rec(irec)-1)/NY_LOCAL) then
+    
+      ! pressure
+      write(file_name,"('./OUTPUT_INVERSION/pressure_file_',i3.3,'_',i6.6,'.dat')") irec, it_inv
+      open(unit=11,file=file_name,status='unknown')
+      do it=1,nt
+! in the scheme of eq (13) of Robertsson, Blanch and Symes, Geophysics, vol. 59(9), pp 1444-1456 (1994)
+! pressure is defined at time t + DELTAT/2, i.e. staggered in time with respect to velocity.
+! Here we must thus take this shift of DELTAT/2 into account to save the seismograms at the right time
+        write(11,*) sngl(dble(it-1)*DELTAT - t0 + DELTAT/2.d0),' ',sngl(sispressure(it,irec))
+      enddo
+      close(11)
+    endif
+  enddo
+
+  end subroutine write_seismograms_inversion
+
+
+
 
 !----
 !----  routine to create a color image of a given vector component
@@ -591,13 +634,6 @@ subroutine save_info_inversion(it)
       WRITE(12,*) (K_windx(ii,jj), jj=1,NY_LOCAL)
     END DO
     CLOSE(12)
- 
-    write(file_name, "('./OUTPUT_INVERSION/Kwindy_',i6.6,'_',i6.6,'.txt')") it,rank
-    OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
-      WRITE(12,*) (K_windy(ii,jj), jj=1,NY_LOCAL)
-    END DO
-    CLOSE(12)
     
      write(file_name, "('./OUTPUT_INVERSION/Kp0_',i6.6,'_',i6.6,'.txt')") it,rank
     OPEN(UNIT=12, FILE=file_name, ACTION="write")
@@ -613,34 +649,31 @@ subroutine save_info_inversion(it)
     END DO
     CLOSE(12)
     
+    if (i_rank == 0) then
     write(file_name, "('./OUTPUT_INVERSION/windx_',i6.6,'_',i6.6,'.txt')") it,rank
     OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
+    DO ii=1,1 !NX_LOCAL
       WRITE(12,*) (windx_prior(ii,jj), jj=1,NY_LOCAL)
     END DO
     CLOSE(12)
  
-    write(file_name, "('./OUTPUT_INVERSION/windy_',i6.6,'_',i6.6,'.txt')") it,rank
-    OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
-      WRITE(12,*) (windy_prior(ii,jj), jj=1,NY_LOCAL)
-    END DO
-    CLOSE(12)
-    
      write(file_name, "('./OUTPUT_INVERSION/p0_',i6.6,'_',i6.6,'.txt')") it,rank
     OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
+    DO ii=1,1 !NX_LOCAL
       WRITE(12,*) (p0_prior(ii,jj), jj=1,NY_LOCAL)
     END DO
     CLOSE(12)
     
     write(file_name, "('./OUTPUT_INVERSION/rho0_',i6.6,'_',i6.6,'.txt')") it,rank
     OPEN(UNIT=12, FILE=file_name, ACTION="write")
-    DO ii=1,NX_LOCAL
+    DO ii=1,1 !NX_LOCAL
       WRITE(12,*) (rho0_prior(ii,jj), jj=1,NY_LOCAL)
     END DO
     CLOSE(12)
-       
+    endif
 
-endsubroutine save_info_inversion
+    call write_seismograms_inversion(sispressure,nstep,nrec,DELTAT,t0, it)
+
+
+end subroutine save_info_inversion
 

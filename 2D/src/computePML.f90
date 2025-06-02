@@ -205,6 +205,22 @@ subroutine computePML()
   one_over_K_x_half(:) = 1.d0 / K_x_half(:)
   one_over_K_y(:) = 1.d0 / K_y(:)
   one_over_K_y_half(:) = 1.d0 / K_y_half(:)
+
+one_over_Kdalpha_x(:) = 1.0d0
+one_over_Kdalpha_y(:) = 1.0d0
+one_over_Kdalpha_x_half(:) = 1.0d0
+one_over_Kdalpha_y_half(:) = 1.0d0
   
+
+
+  do i=1,NX
+  if (abs(d_x(i)) > 1e-6) one_over_Kdalpha_x(i) = 1.d0 / (K_x(i) + d_x(i) / alpha_x(i))
+  if (abs(d_x_half(i)) > 1e-6)  one_over_Kdalpha_x_half(i) = 1.d0 / (K_x_half(i) + d_x_half(i) / alpha_x_half(i))
+  enddo
+  do j=1,NY
+  if (abs(d_y(j)) > 1e-6)  one_over_Kdalpha_y(j) = 1.d0 / (K_y(j) + d_y(j) / alpha_y(j))
+  if (abs(d_y_half(j)) > 1e-6) one_over_Kdalpha_y_half(j) = 1.d0 / (K_y_half(j) + d_y_half(j) / alpha_y_half(j))
+  enddo
  
+
 endsubroutine computePML
