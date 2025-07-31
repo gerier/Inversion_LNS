@@ -17,51 +17,33 @@ implicit none
       value_dvy_dy, &
       value_dpressure_dx, &
       value_dpressure_dy, &
-      value_dp0_dx, &
       value_dp0_dy, &
-      value_drho0_dx, &
       value_drho0_dy, &
       value_drhop_dx, &
       value_drhop_dy, &
-      value_dwindx_dx, &
-      value_dwindy_dy, &
       value_vdrho0,    &
-      value_v0drho0,   &
       value_v0drhop, &
       value_vdp0 , &
       value_v0dp
 
   double precision :: &
-    value_rho0dv0, &
     value_dvy_dx, &
     value_dvx_dy, &
-    value_dwindx_dx_prec, &
-    value_dwindx_dx_next, &
-    value_dwindy_dy_prec, &
-    value_dwindy_dy_next, &
     value_drho0_dy_prec, &
-    value_drho0_dy_next, &
-    value_drho0_dx_prec, &
-    value_drho0_dx_next
+    value_drho0_dy_next
 
   double precision :: &
       vx_half_x, &
       vy_half_y,&
       windx_half_x, &
-      windy_half_y, &
       windx_half_x_half_y, &
-      windy_half_x_half_y, &
       vy_half_x_half_y, &
       vx_half_x_half_y
 
    double precision :: &
-      value_vdwindy, &
       value_vdwindx, &
       value_v0dvy, &
       value_v0dvx, &
-      value_v0dwindy, &
-      value_v0dwindx, &
-      value_dwindy_dx, &
       value_dwindx_dy
 
   double precision :: maxvalue
@@ -122,48 +104,33 @@ implicit none
        vx_half_x = (vx(Ip1,j) + vx(i,j)) * 0.5d0
        vy_half_y = (vy(i,j) + vy(i,Jm1)) * 0.5d0
        windx_half_x = (windx(Ip1,j) + windx(i,j)) * 0.5d0
-       windy_half_y = (windy(i,j) + windy(i,Jm1)) * 0.5d0
 
 
        ! derivative computations : vx, windx according to x
        u_mm = vx(Im1,j); u_m = vx(i,j); u_p = vx(Ip1,j); u_pp = vx(Ip2,j)
        call compute_centered_dU(u_mm, u_m, u_p, u_pp, value_dvx_dx, NINE_OVER_8_DELTAX, ONE_OVER_24_DELTAX)
         
-       u_mm = windx(Im1,j); u_m = windx(i,j); u_p = windx(Ip1,j); u_pp = windx(Ip2,j)
-       call compute_centered_dU(u_mm, u_m, u_p, u_pp, value_dwindx_dx, NINE_OVER_8_DELTAX, ONE_OVER_24_DELTAX)
-
        eq1_memory_dvx_dx_fw(i,j) = b_x_half(i_global) * eq1_memory_dvx_dx_fw(i,j) + a_x_half(i_global) * value_dvx_dx
-       eq1_memory_dwindx_dx_fw(i,j) = c_x_half(i_global) * value_dwindx_dx
 	
 	
        ! derivative computations : vy, windy according to y
        u_mm = vy(i,Jm2); u_m = vy(i,Jm1); u_p = vy(i,j); u_pp = vy(i,Jp1)
        call compute_centered_dU(u_mm, u_m, u_p, u_pp, value_dvy_dy, NINE_OVER_8_DELTAY, ONE_OVER_24_DELTAY)
       
-       u_mm = windy(i,Jm2); u_m = windy(i,Jm1); u_p = windy(i,j); u_pp = windy(i,Jp1)
-       call compute_centered_dU(u_mm, u_m, u_p, u_pp, value_dwindy_dy, NINE_OVER_8_DELTAY, ONE_OVER_24_DELTAY)
- 
-       eq1_memory_dvy_dy_fw(i,j) = b_y(j_global) * eq1_memory_dvy_dy_fw(i,j) + a_y(j_global) * value_dvy_dy
-       eq1_memory_dwindy_dy_fw(i,j) = c_y(j_global) * value_dwindy_dy        
+       eq1_memory_dvy_dy_fw(i,j) = b_y(j_global) * eq1_memory_dvy_dy_fw(i,j) + a_y(j_global) * value_dvy_dy       
 
 
        ! decentered derivative of p0, p, rho0 and rhop in x
        if (windx_half_x >= 0) then
-          u_mm = p0(Im2,j)      ; u_m = p0(Im1,j)      ; u_p = p0(Ip1,j) 
-          call compute_decentered_backward_dU(u_mm, u_m, p0(i,j), u_p, value_dp0_dx, ONE_OVER_SIX_DELTAX)
           u_mm = p_old(Im2,j); u_m = p_old(Im1,j); u_p = p_old(Ip1,j) 
           call compute_decentered_backward_dU(u_mm, u_m, p_old(i,j), u_p, value_dpressure_dx, ONE_OVER_SIX_DELTAX)
-          u_mm = rho0(Im2,j)    ; u_m = rho0(Im1,j)    ; u_p = rho0(Ip1,j) 
-          call compute_decentered_backward_dU(u_mm, u_m, rho0(i,j), u_p, value_drho0_dx, ONE_OVER_SIX_DELTAX)
+         
           u_mm = rhop_old(Im2,j)     ; u_m = rhop_old(Im1,j)     ; u_p = rhop_old(Ip1,j) 
           call compute_decentered_backward_dU(u_mm, u_m, rhop_old(i,j), u_p, value_drhop_dx, ONE_OVER_SIX_DELTAX)
        else 
-          u_pp = p0(Ip2,j)      ; u_p = p0(Ip1,j)      ; u_m = p0(Im1,j) 
-          call compute_decentered_forward_dU(u_m, p0(i,j), u_p, u_pp, value_dp0_dx, ONE_OVER_SIX_DELTAX)
           u_pp = p_old(Ip2,j); u_p = p_old(Ip1,j); u_m = p_old(Im1,j) 
           call compute_decentered_forward_dU(u_m, p_old(i,j), u_p, u_pp, value_dpressure_dx, ONE_OVER_SIX_DELTAX)
-          u_pp = rho0(Ip2,j)    ; u_p = rho0(Ip1,j)    ; u_m = rho0(Im1,j) 
-          call compute_decentered_forward_dU(u_m, rho0(i,j), u_p, u_pp,value_drho0_dx, ONE_OVER_SIX_DELTAX)
+         
           u_pp = rhop_old(Ip2,j)     ; u_p = rhop_old(Ip1,j)     ; u_m = rhop_old(Im1,j) 
           call compute_decentered_forward_dU(u_m, rhop_old(i,j), u_p, u_pp, value_drhop_dx, ONE_OVER_SIX_DELTAX)
        endif
@@ -171,12 +138,9 @@ implicit none
        eq1_memory_dpressure_dx_fw(i,j) = b_x_half(i_global) * eq1_memory_dpressure_dx_fw(i,j) &
                  + a_x_half(i_global) * value_dpressure_dx
        eq1_memory_drhop_dx_fw(i,j) = b_x_half(i_global) * eq1_memory_drhop_dx_fw(i,j) + a_x_half(i_global) * value_drhop_dx
-       eq1_memory_dp0_dx_fw(i,j) = c_x_half(i_global) * value_dp0_dx
-       eq1_memory_drho0_dx_fw(i,j) = c_x_half(i_global) * value_drho0_dx 
              
               
        ! decentered derivative of p0, p, rho0 and rhop in y  
-       if (windy_half_y >= 0) then
           u_mm = p0(i,Jm2)      ; u_m = p0(i,Jm1)      ; u_p = p0(i,Jp1) 
           call compute_decentered_backward_dU(u_mm, u_m, p0(i,j), u_p, value_dp0_dy, ONE_OVER_SIX_DELTAY)
           u_mm = p_old(i,Jm2); u_m = p_old(i,Jm1); u_p = p_old(i,Jp1) 
@@ -185,16 +149,7 @@ implicit none
           call compute_decentered_backward_dU(u_mm, u_m, rho0(i,j), u_p, value_drho0_dy, ONE_OVER_SIX_DELTAY)
           u_mm = rhop_old(i,Jm2)     ; u_m = rhop_old(i,Jm1)     ; u_p = rhop_old(i,Jp1) 
           call compute_decentered_backward_dU(u_mm, u_m, rhop_old(i,j), u_p, value_drhop_dy, ONE_OVER_SIX_DELTAY)
-       else 
-          u_pp = p0(i,Jp2)      ; u_p = p0(i,Jp1)      ; u_m = p0(i,Jm1) 
-          call compute_decentered_forward_dU(u_m, p0(i,j), u_p, u_pp, value_dp0_dy, ONE_OVER_SIX_DELTAY)
-          u_pp = p_old(i,Jp2); u_p = p_old(i,Jp1); u_m = p_old(i,Jm1) 
-          call compute_decentered_forward_dU(u_m, p_old(i,j), u_p, u_pp, value_dpressure_dy, ONE_OVER_SIX_DELTAY)
-          u_pp = rho0(i,Jp2)    ; u_p = rho0(i,Jp1)    ; u_m = rho0(i,Jm1) 
-          call compute_decentered_forward_dU(u_m, rho0(i,j), u_p, u_pp,value_drho0_dy, ONE_OVER_SIX_DELTAY)
-          u_pp = rhop_old(i,Jp2)     ; u_p = rhop_old(i,Jp1)       ; u_m = rhop_old(i,Jm1) 
-          call compute_decentered_forward_dU(u_m, rhop_old(i,j), u_p, u_pp, value_drhop_dy, ONE_OVER_SIX_DELTAY)
-       endif
+    
               
        eq1_memory_dpressure_dy_fw(i,j) = b_y(j_global) * eq1_memory_dpressure_dy_fw(i,j) + a_y(j_global) * value_dpressure_dy
        eq1_memory_drhop_dy_fw(i,j) = b_y(j_global) * eq1_memory_drhop_dy_fw(i,j) + a_y(j_global) * value_drhop_dy
@@ -205,37 +160,30 @@ implicit none
        ! derivative updates for PML
        value_dvx_dx = value_dvx_dx * one_over_K_x_half(i_global) + eq1_memory_dvx_dx_fw(i,j)
        value_dvy_dy = value_dvy_dy * one_over_K_y(j_global) + eq1_memory_dvy_dy_fw(i,j) 
-       value_dwindx_dx = value_dwindx_dx * one_over_Kdalpha_x_half(i_global) !+ eq1_memory_dwindx_dx_fw(i,j)
-       value_dwindy_dy = value_dwindy_dy * one_over_Kdalpha_y(j_global) !+ eq1_memory_dwindy_dy_fw(i,j) 
-        
-       value_dp0_dx = value_dp0_dx * one_over_Kdalpha_x_half(i_global) !+ eq1_memory_dp0_dx_fw(i,j)
-       value_drho0_dx = value_drho0_dx * one_over_Kdalpha_x_half(i_global)! + eq1_memory_drho0_dx_fw(i,j)
+    
        value_dpressure_dx = value_dpressure_dx * one_over_K_x_half(i_global) + eq1_memory_dpressure_dx_fw(i,j)
        value_drhop_dx = value_drhop_dx * one_over_K_x_half(i_global) + eq1_memory_drhop_dx_fw(i,j)
         
-       value_dp0_dy = value_dp0_dy * one_over_Kdalpha_y(j_global) !+ eq1_memory_dp0_dy_fw(i,j) 
-       value_drho0_dy = value_drho0_dy * one_over_Kdalpha_y(j_global) !+ eq1_memory_drho0_dy_fw(i,j) 
+       value_dp0_dy = value_dp0_dy * one_over_Kdalpha_y(j_global) 
+       value_drho0_dy = value_drho0_dy * one_over_Kdalpha_y(j_global) 
        value_dpressure_dy = value_dpressure_dy * one_over_K_y(j_global) + eq1_memory_dpressure_dy_fw(i,j) 
        value_drhop_dy = value_drhop_dy * one_over_K_y(j_global) + eq1_memory_drhop_dy_fw(i,j)        
         
         
        ! intermediate computations
-       value_vdp0   = (vx_half_x  * value_dp0_dx)         + (vy_half_y  * value_dp0_dy)
-       value_v0dp   = (windx_half_x * value_dpressure_dx) + (windy_half_y * value_dpressure_dy)
-
-       value_vdrho0   = (vx_half_x  * value_drho0_dx)   + (vy_half_y  * value_drho0_dy)
-       value_v0drhop = (windx_half_x * value_drhop_dx)  + (windy_half_y * value_drhop_dy)
+       value_vdp0   = (vy_half_y  * value_dp0_dy)
+       value_v0dp   = (windx_half_x * value_dpressure_dx)
+       value_vdrho0   =  (vy_half_y  * value_drho0_dy)
+       value_v0drhop = (windx_half_x * value_drhop_dx)
         
         
        ! updateT
        pressure(i,j) = pressure(i,j) - (gamma_chimie(i,j) * p0(i,j) * (value_dvx_dx + value_dvy_dy)) * DELTAT
        pressure(i,j) = pressure(i,j) - value_vdp0 * DELTAT 
-       pressure(i,j) = pressure(i,j) - gamma_chimie(i,j) * pressure(i,j) * (value_dwindx_dx + value_dwindy_dy) * DELTAT
        pressure(i,j) = pressure(i,j) - value_v0dp * DELTAT
 
        rhop(i,j) = rhop(i,j) - rho0(i,j) * (value_dvx_dx + value_dvy_dy) * DELTAT
        rhop(i,j) = rhop(i,j) - value_vdrho0 * DELTAT
-       rhop(i,j) = rhop(i,j) - rhop(i,j) * (value_dwindx_dx + value_dwindy_dy) * DELTAT
        rhop(i,j) = rhop(i,j) - value_v0drhop * DELTAT
 
       enddo
@@ -386,110 +334,62 @@ implicit none
       rho0_half_x  = 0.5d0 * (rho0(i,j)  + rho0(Im1,j))
       rhop_half_x = 0.5d0 * (rhop(i,j) + rhop(Im1,j))
       vy_half_x_half_y  = (vy_old(i,j)    + vy_old(i,Jm1)+ vy_old(Im1,j)+ vy_old(Im1,Jm1))* 0.25d0
-      windy_half_x_half_y = (windy(i,j)   + windy(i,Jm1) + windy(Im1,j) + windy(Im1,Jm1)) * 0.25d0
-
 
       ! compute derivative of the pressure, density according to x
-      u_mm = rho0(Im2,j); u_m = rho0(Im1,j); u_p = rho0(i,j); u_pp = rho0(Ip1,j)
-      call compute_centered_dU(u_mm, u_m, u_p, u_pp, value_drho0_dx, NINE_OVER_8_DELTAX, ONE_OVER_24_DELTAX)
       u_mm = pressure(Im2,j); u_m = pressure(Im1,j); u_p = pressure(i,j); u_pp = pressure(Ip1,j)
       call compute_centered_dU(u_mm, u_m, u_p, u_pp, value_dpressure_dx, NINE_OVER_8_DELTAX, ONE_OVER_24_DELTAX)
       
-      eq2_memory_drho0_dx_fw(i,j) = c_x(i_global) * value_drho0_dx
       eq2_memory_dpressure_dx_fw(i,j) = b_x(i_global) * eq2_memory_dpressure_dx_fw(i,j) + a_x(i_global) * value_dpressure_dx
       
       
       ! compute derivative of windx, vx according to x
       if (windx(i,j) >= 0) then
-          u_mm = windx(Im2,j)      ; u_m = windx(Im1,j)      ; u_p = windx(Ip1,j) 
-          call compute_decentered_backward_dU(u_mm, u_m, windx(i,j), u_p, value_dwindx_dx, ONE_OVER_SIX_DELTAX)
           u_mm = vx_old(Im2,j); u_m = vx_old(Im1,j); u_p = vx_old(Ip1,j) 
           call compute_decentered_backward_dU(u_mm, u_m, vx_old(i,j), u_p, value_dvx_dx, ONE_OVER_SIX_DELTAX)
      else 
-          u_pp = windx(Ip2,j)    ; u_p = windx(Ip1,j)    ; u_m = windx(Im1,j) 
-          call compute_decentered_forward_dU(u_m, windx(i,j), u_p, u_pp, value_dwindx_dx, ONE_OVER_SIX_DELTAX)
           u_pp = vx_old(Ip2,j)     ; u_p = vx_old(Ip1,j)     ; u_m = vx_old(Im1,j) 
           call compute_decentered_forward_dU(u_m, vx_old(i,j), u_p, u_pp, value_dvx_dx, ONE_OVER_SIX_DELTAX)
      endif
      
-      eq2_memory_dwindx_dx_fw(i,j) = c_x(i_global) * value_dwindx_dx
       eq2_memory_dvx_dx_fw(i,j) = b_x(i_global) * eq2_memory_dvx_dx_fw(i,j) + a_x(i_global) * value_dvx_dx
       
 
      ! compute derivative of windx, vx according to y
-     if (windy_half_x_half_y >= 0) then
           u_mm = windx(i,Jm2)      ; u_m = windx(i,Jm1)      ; u_p = windx(i,Jp1) 
           call compute_decentered_backward_dU(u_mm, u_m, windx(i,j), u_p, value_dwindx_dy, ONE_OVER_SIX_DELTAY)
           u_mm = vx_old(i,Jm2); u_m = vx_old(i,Jm1); u_p = vx_old(i,Jp1) 
           call compute_decentered_backward_dU(u_mm, u_m, vx_old(i,j), u_p, value_dvx_dy, ONE_OVER_SIX_DELTAY)
-     else 
-          u_pp = windx(i,Jp2)      ; u_p = windx(i,Jp1)      ; u_m = windx(i,Jm1) 
-          call compute_decentered_forward_dU(u_m, windx(i,j), u_p, u_pp, value_dwindx_dy, ONE_OVER_SIX_DELTAY)
-          u_pp = vx_old(i,Jp2); u_p = vx_old(i,Jp1); u_m = vx_old(i,Jm1) 
-          call compute_decentered_forward_dU(u_m, vx_old(i,j), u_p, u_pp, value_dvx_dy, ONE_OVER_SIX_DELTAY)
-     endif
-     
+ 
       eq2_memory_dwindx_dy_fw(i,j) = c_y(j_global) * value_dwindx_dy
       eq2_memory_dvx_dy_fw(i,j) = b_y(j_global) * eq2_memory_dvx_dy_fw(i,j) + a_y(j_global) * value_dvx_dy
      
      
      ! compute derivative of rho0 according to y (evaluating in vx point) 
-     if (windy_half_x_half_y >= 0) then
           u_mm = rho0(Im1,Jm2)      ; u_m = rho0(Im1,Jm1)      ; u_p = rho0(Im1,Jp1) 
           call compute_decentered_backward_dU(u_mm, u_m, rho0(Im1,j), u_p, value_drho0_dy_prec, ONE_OVER_SIX_DELTAY)
           u_mm = rho0(i,Jm2)      ; u_m = rho0(i,Jm1)      ; u_p = rho0(i,Jp1) 
           call compute_decentered_backward_dU(u_mm, u_m, rho0(i,j), u_p, value_drho0_dy_next, ONE_OVER_SIX_DELTAY)
-     else 
-          u_pp = rho0(Im1,Jp2)      ; u_p = rho0(Im1,Jp1)      ; u_m = rho0(Im1,Jm1) 
-          call compute_decentered_forward_dU(u_m, rho0(Im1,j), u_p, u_pp, value_drho0_dy_prec, ONE_OVER_SIX_DELTAY)
-          u_pp = rho0(i,Jp2); u_p = rho0(i,Jp1); u_m = rho0(i,Jm1) 
-          call compute_decentered_forward_dU(u_m, rho0(i,j), u_p, u_pp, value_drho0_dy_next, ONE_OVER_SIX_DELTAY)
-     endif
      value_drho0_dy = 0.5d0 * (value_drho0_dy_next + value_drho0_dy_prec)
      
      eq2_memory_drho0_dy_fw(i,j) = c_y(j_global) * value_drho0_dy
 
 
-     ! compute windy according to y (evaluating in vx point)
-     u_mm = windy(Im1,Jm2); u_m = windy(Im1,Jm1); u_p = windy(Im1,j); u_pp = windy(Im1,Jp1)
-     call compute_centered_dU(u_mm, u_m, u_p, u_pp, value_dwindy_dy_prec, NINE_OVER_8_DELTAY, ONE_OVER_24_DELTAY)
-     u_mm = windy(i,Jm2); u_m = windy(i,Jm1); u_p = windy(i,j); u_pp = windy(i,Jp1)
-     call compute_centered_dU(u_mm, u_m, u_p, u_pp, value_dwindy_dy_next, NINE_OVER_8_DELTAY, ONE_OVER_24_DELTAY)
-     value_dwindy_dy = 0.5d0 * (value_dwindy_dy_next + value_dwindy_dy_prec)
-
-     eq2_memory_dwindy_dy_fw(i,j) = c_y(j_global) * value_dwindy_dy
-
-
      ! derivative updates for PML
      value_dpressure_dx = value_dpressure_dx * one_over_K_x(i_global) + eq2_memory_dpressure_dx_fw(i,j)
-     value_drho0_dx = value_drho0_dx * one_over_Kdalpha_x(i_global)! + eq2_memory_drho0_dx_fw(i,j)
-     
      value_dvx_dx = value_dvx_dx * one_over_K_x(i_global) + eq2_memory_dvx_dx_fw(i,j)
-     value_dwindx_dx = value_dwindx_dx * one_over_Kdalpha_x(i_global)! + eq2_memory_dwindx_dx_fw(i,j)
-     
      value_dvx_dy = value_dvx_dy * one_over_K_y(j_global) + eq2_memory_dvx_dy_fw(i,j)
      value_dwindx_dy = value_dwindx_dy * one_over_Kdalpha_y(j_global) !+ eq2_memory_dwindx_dy_fw(i,j)
-     
      value_drho0_dy = value_drho0_dy * one_over_Kdalpha_y(j_global)! + eq2_memory_drho0_dy_fw(i,j)
 
-     value_dwindy_dy = value_dwindy_dy * one_over_Kdalpha_y(j_global)! + eq2_memory_dwindy_dy_fw(i,j)
-          
      
      ! intermediate computations: (v0 . nabla) v0_x ; (v' . nabla) v0_x ; (v0 . nabla) v0_x
-     value_v0dwindx = windx(i,j)     * value_dwindx_dx + windy_half_x_half_y * value_dwindx_dy
-     value_vdwindx  = vx_old(i,j)  * value_dwindx_dx + vy_half_x_half_y  * value_dwindx_dy
-     value_v0dvx  = windx(i,j)     * value_dvx_dx  + windy_half_x_half_y * value_dvx_dy
-
-     ! compute rho0 div v0 ; v0 div rho0
-     value_rho0dv0 = rho0_half_x * (value_dwindx_dx + value_dwindy_dy)
-     value_v0drho0 = windx(i,j)   * value_drho0_dx + windy_half_x_half_y * value_drho0_dy
+     value_vdwindx  =  vy_half_x_half_y  * value_dwindx_dy
+     value_v0dvx  = windx(i,j)     * value_dvx_dx  
 
 
      ! update
      vx(i,j) = vx(i,j) - value_dpressure_dx * DELTAT / rho0_half_x
-     vx(i,j) = vx(i,j) - vx_old(i,j)  * (value_v0drho0 + value_rho0dv0) * DELTAT / rho0_half_x
      vx(i,j) = vx(i,j) - value_v0dvx  * DELTAT
-     vx(i,j) = vx(i,j) - rhop_half_x * value_v0dwindx * DELTAT / rho0_half_x
      vx(i,j) = vx(i,j) - value_vdwindx  * DELTAT
      
    enddo
@@ -551,96 +451,44 @@ implicit none
 
       ! compute derivative of windy, vy according to x
       if (windx_half_x_half_y >= 0) then
-          u_mm = windy(Im2,j)      ; u_m = windy(Im1,j)      ; u_p = windy(Ip1,j) 
-          call compute_decentered_backward_dU(u_mm, u_m, windy(i,j), u_p, value_dwindy_dx, ONE_OVER_SIX_DELTAX)
+
           u_mm = vy_old(Im2,j); u_m = vy_old(Im1,j); u_p = vy_old(Ip1,j) 
           call compute_decentered_backward_dU(u_mm, u_m, vy_old(i,j), u_p, value_dvy_dx, ONE_OVER_SIX_DELTAX)
       else 
-          u_pp = windy(Ip2,j)      ; u_p = windy(Ip1,j)      ; u_m = windy(Im1,j) 
-          call compute_decentered_forward_dU(u_m, windy(i,j), u_p, u_pp, value_dwindy_dx, ONE_OVER_SIX_DELTAX)
+
           u_pp = vy_old(Ip2,j); u_p = vy_old(Ip1,j); u_m = vy_old(Im1,j) 
           call compute_decentered_forward_dU(u_m, vy_old(i,j), u_p, u_pp, value_dvy_dx, ONE_OVER_SIX_DELTAX)
       endif
-
-      eq3_memory_dwindy_dx_fw(i,j) = c_x_half(i_global) * value_dwindy_dx
+   
+      eq3_memory_dvy_dx_fw(i,j) = b_y_half(j_global) * eq3_memory_dvy_dx_fw(i,j) &
+                + a_y_half(j_global) * value_dvy_dx
+   
       
-      
-      ! compute derivative of rho0 according to x
-      if (windx_half_x_half_y >= 0) then
-          u_mm = rho0(Im2,j)      ; u_m = rho0(Im1,j)      ; u_p = rho0(Ip1,j) 
-          call compute_decentered_backward_dU(u_mm, u_m, rho0(i,j), u_p, value_drho0_dx_prec, ONE_OVER_SIX_DELTAX)
-          u_mm = rho0(Im2,Jp1); u_m = rho0(Im1,Jp1); u_p = rho0(Ip1,Jp1) 
-          call compute_decentered_backward_dU(u_mm, u_m, rho0(i,Jp1), u_p, value_drho0_dx_next, ONE_OVER_SIX_DELTAX)
-      else 
-          u_pp = rho0(Ip2,j)      ; u_p = rho0(Ip1,j)      ; u_m = rho0(Im1,j) 
-          call compute_decentered_forward_dU(u_m, rho0(i,j), u_p, u_pp, value_drho0_dx_prec, ONE_OVER_SIX_DELTAX)
-          u_pp = rho0(Ip2,Jp1); u_p = rho0(Ip1,Jp1); u_m = rho0(Im1,Jp1) 
-          call compute_decentered_forward_dU(u_m, rho0(i,Jp1), u_p, u_pp, value_drho0_dx_next, ONE_OVER_SIX_DELTAX)
-      endif
-      value_drho0_dx = 0.5d0 * (value_drho0_dx_next + value_drho0_dx_prec)
-
-      eq3_memory_drho0_dx_fw(i,j) = c_x_half(i_global) * value_drho0_dx
-      
-
+  
       ! compute derivative of windy, vy according to y
-      if (windy(i,j) >= 0) then
-          u_mm = windy(i,Jm2)      ; u_m = windy(i,Jm1)      ; u_p = windy(i,Jp1) 
-          call compute_decentered_backward_dU(u_mm, u_m, windy(i,j), u_p, value_dwindy_dy, ONE_OVER_SIX_DELTAX)
           u_mm = vy_old(i,Jm2); u_m = vy_old(i,Jm1); u_p = vy_old(i,Jp1) 
           call compute_decentered_backward_dU(u_mm, u_m, vy_old(i,j), u_p, value_dvy_dy, ONE_OVER_SIX_DELTAX)
-      else 
-          u_pp = windy(i,Jp2)      ; u_p = windy(i,Jp1)      ; u_m = windy(i,Jm1) 
-          call compute_decentered_forward_dU(u_m, windy(i,j), u_p, u_pp, value_dwindy_dy, ONE_OVER_SIX_DELTAX)
-          u_pp = vy_old(i,Jp2); u_p = vy_old(i,Jp1); u_m = vy_old(i,Jm1) 
-          call compute_decentered_forward_dU(u_m, vy_old(i,j), u_p, u_pp, value_dvy_dy, ONE_OVER_SIX_DELTAX)
-      endif
-      
-      eq3_memory_dwindy_dy_fw(i,j) = c_y_half(j_global) * value_dwindy_dy
+   
       eq3_memory_dvy_dy_fw(i,j) = b_y_half(j_global) * eq3_memory_dvy_dy_fw(i,j) + a_y_half(j_global) * value_dvy_dy
             
 
-     ! compute derivative of windx according to x
-      u_mm = windx(Im1,j); u_m = windx(i,j); u_p = windx(Ip1,j); u_pp = windx(Ip2,j)
-      call compute_centered_dU(u_mm, u_m, u_p, u_pp, value_dwindx_dx_prec, NINE_OVER_8_DELTAX, ONE_OVER_24_DELTAX)
-      u_mm = windx(Im1,Jp1); u_m = windx(i,Jp1); u_p = windx(Ip1,Jp1); u_pp = windx(Ip2,Jp1)
-      call compute_centered_dU(u_mm, u_m, u_p, u_pp, value_dwindx_dx_next, NINE_OVER_8_DELTAX, ONE_OVER_24_DELTAX)
-      value_dwindx_dx = 0.5d0 * (value_dwindx_dx_next + value_dwindx_dx_prec)
-      
-      eq3_memory_dwindx_dx_fw(i,j) = c_x_half(i_global) * value_dwindx_dx
-      
-      
       ! derivative updates for PML
       value_dpressure_dy = value_dpressure_dy * one_over_K_y_half(j_global) + eq3_memory_dpressure_dy_fw(i,j)
       value_drho0_dy = value_drho0_dy * one_over_Kdalpha_y_half(j_global) !+ eq3_memory_drho0_dy_fw(i,j)
       
       value_dvy_dy = value_dvy_dy *  one_over_K_y_half(j_global) + eq3_memory_dvy_dy_fw(i,j)
-      value_dwindy_dy = value_dwindy_dy *  one_over_Kdalpha_y_half(j_global) !+ eq3_memory_dwindy_dy_fw(i,j)
-      
+    
       value_dvy_dx = value_dvy_dx *  one_over_K_x_half(i_global) + eq3_memory_dvy_dx_fw(i,j)
-      value_dwindy_dx = value_dwindy_dx *  one_over_Kdalpha_x_half(i_global) !+ eq3_memory_dwindy_dx_fw(i,j)
-      
-      value_drho0_dx = value_drho0_dx * one_over_Kdalpha_x_half(i_global)! + eq3_memory_drho0_dx_fw(i,j)
-      
-      value_dwindx_dx = value_dwindx_dx * one_over_Kdalpha_x_half(i_global) !+ eq3_memory_dwindx_dx_fw(i,j)
+   
       
       
       ! intermediate computations: (v0 . nabla) v0_y ; (v' . nabla) v0_y ; (v0 . nabla) v0_y
-      value_v0dwindy = windx_half_x_half_y * value_dwindy_dx + windy(i,j)     * value_dwindy_dy
-      value_vdwindy  = vx_half_x_half_y  * value_dwindy_dx + vy_old(i,j)  * value_dwindy_dy
-      value_v0dvy  = windx_half_x_half_y * value_dvy_dx  + windy(i,j)     * value_dvy_dy
+      value_v0dvy  = windx_half_x_half_y * value_dvy_dx 
 
-
-      ! compute rho0 div v0 ; v0 div rho0
-      value_rho0dv0 = rho0_half_y * (value_dwindx_dx  + value_dwindy_dy)
-      value_v0drho0 = windx_half_x_half_y * value_drho0_dx  + windy(i,j)   * value_drho0_dy
-
-
+   
       ! update
       vy(i,j) = vy(i,j) - value_dpressure_dy * DELTAT / rho0_half_y
-      vy(i,j) = vy(i,j) - vy_old(i,j)  * (value_v0drho0 + value_rho0dv0) * DELTAT / rho0_half_y
       vy(i,j) = vy(i,j) - value_v0dvy  * DELTAT
-      vy(i,j) = vy(i,j) - rhop_half_y * value_v0dwindy * DELTAT / rho0_half_y
-      vy(i,j) = vy(i,j) - value_vdwindy  * DELTAT
       vy(i,j) = vy(i,j) - rhop_half_y * g_half_y * DELTAT / rho0_half_y
  
     enddo
