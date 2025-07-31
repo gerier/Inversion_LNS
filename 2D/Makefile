@@ -4,6 +4,7 @@ mcmodel=large
 
 SRCS := src/main.f90 \
 	src_gradient/checkpointing_double.f90 \
+	src_gradient/lib_arrivaltime.f90 \
 	src_gradient/compute_adjoint.f90 \
 	src_gradient/derivative_first_line_moinsdegen.f90 \
 	src_gradient/compute_kernel_interpolation.f90 \
@@ -15,7 +16,7 @@ SRCS := src/main.f90 \
 	src/outputs_lib.f90  \
 	src/reset.f90 \
 	src_inversion/misfit.f90 \
-	src_inversion/inversion.f90 \
+	src_inversion/inversion.f90 
 
 
 OBJS := ${SRCS:.f90=.o} 

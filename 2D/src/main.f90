@@ -6,7 +6,6 @@ program main
  use parameters
  implicit none
  
- !integer i,j,
  integer :: irec
  double precision :: Courant_number
 

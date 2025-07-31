@@ -641,7 +641,7 @@ implicit none
       vy(i,j) = vy(i,j) - value_v0dvy  * DELTAT
       vy(i,j) = vy(i,j) - rhop_half_y * value_v0dwindy * DELTAT / rho0_half_y
       vy(i,j) = vy(i,j) - value_vdwindy  * DELTAT
-      !vy(i,j) = vy(i,j) - rhop_half_y * g_half_y * DELTAT / rho0_half_y
+      vy(i,j) = vy(i,j) - rhop_half_y * g_half_y * DELTAT / rho0_half_y
  
     enddo
   enddo

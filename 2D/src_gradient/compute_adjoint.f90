@@ -523,41 +523,58 @@ endsubroutine compute_adjoint
 
 
 
+subroutine prepare_adjoint_source()
+use parameters, only : sispressure_true, sispressure_prior, normsq_pressure_true_per_rec,&
+                      NSTEP, NREC, t0, DELTAT, PI, observation, adjoint_source, TINYVAL
+implicit none
+integer :: irec, it_step
+double precision, dimension(NSTEP) :: coef_damping
+
+  if (observation == 0) then
+    coef_damping(:) = 1.0d0
+    do it_step=1,NSTEP  
+      ! add a damping in the first iteration to avoid exciting high frequencies
+      if (it_step*DELTAT < t0) then
+        coef_damping(NSTEP-it_step+1) = 0.5 - 0.5 * cos(2*PI*it_step*DELTAT/(2*t0))
+      endif 
+    enddo
+  
+    adjoint_source(:,:) = (sispressure_true(:,:) - sispressure_prior(:,:))
+    do irec=1,NREC
+      if (normsq_pressure_true_per_rec(irec) > TINYVAL) then
+        adjoint_source(:,irec) = adjoint_source(:,irec) / normsq_pressure_true_per_rec(irec)
+        adjoint_source(:,irec) =  adjoint_source(:,irec) * coef_damping(:)
+      endif
+    enddo
+    
+  else 
+   
+   call get_Tr_adjoint_source()
+   
+  endif
+  
+endsubroutine prepare_adjoint_source
+
+
 subroutine compute_adjoint_source(adjoint_source_term, it_step)
 
- use parameters, only : sispressure_true, sispressure_prior, normsq_pressure_true_per_rec,t0,DELTAT,PI, &
-                        ix_rec, iy_rec, NREC, NSTEP, TINYVAL,&
+ use parameters, only : ix_rec, iy_rec, NREC, NSTEP, adjoint_source, &
                         i_rank, j_rank,NX_LOCAL,NY_LOCAL, offset_i, offset_j
  
  double precision, dimension(-1:NX_LOCAL+2, -1:NY_LOCAL+2) :: adjoint_source_term
-  double precision :: diff
  integer :: it_step, irec
  integer :: i,j
- double precision :: coef_damping = 1.0d0
-  adjoint_source_term(:,:) = 0.0d0
 
-  ! add a damping in the first iteration to avoid exciting high frequencies
-  if (it_step*DELTAT < t0) then
-    coef_damping = 0.5 - 0.5 * cos(2*PI*it_step*DELTAT/(2*t0))
-  endif 
-  
+  adjoint_source_term(:,:) = 0.0d0
   do irec=1,NREC
    
      if (i_rank == (ix_rec(irec)-1)/NX_LOCAL .and. j_rank == (iy_rec(irec)-1)/NY_LOCAL) then
        i = ix_rec(irec) - offset_i 
        j = iy_rec(irec) - offset_j
    
-       diff = (sispressure_true(NSTEP-it_step+1,irec) - sispressure_prior(NSTEP-it_step+1,irec))
-       
-       if (abs(diff)  > TINYVAL) then
-         adjoint_source_term(i,j) = coef_damping * diff
-       endif
-     
-       if (normsq_pressure_true_per_rec(irec) > TINYVAL .and. abs(diff) > TINYVAL) then
-         adjoint_source_term(i,j) = adjoint_source_term(i,j) / normsq_pressure_true_per_rec(irec)    
-       endif
+       adjoint_source_term(i,j) = adjoint_source(NSTEP-it_step+1,irec) 
      endif
-       
+
   enddo
  
 endsubroutine compute_adjoint_source

@@ -6,15 +6,15 @@ module parameters
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! method
 ! 1: forward, 2: kernel, 3: inversion
- integer, parameter :: method = 3
+ integer, parameter :: method = 2
  
  
 ! total number of grid points in each direction of the grid
-  integer, parameter :: NY = 592
-  integer, parameter :: NX = 1008
+  integer, parameter :: NY = 1507
+  integer, parameter :: NX = 4608
 
-  integer, parameter :: NPROC_X = 24 !! 20
-  integer, parameter :: NPROC_Y = 16 !! 20
+  integer, parameter :: NPROC_X = 36 !! 20
+  integer, parameter :: NPROC_Y = 11 !! 20
   integer, parameter :: NPROC = NPROC_X * NPROC_Y !! 20
   
   integer, parameter :: NX_LOCAL = NX / NPROC_X
@@ -38,7 +38,7 @@ module parameters
   double precision, parameter :: DELTAT = 0.05d0
 
 ! total number of time steps
-  integer, parameter :: NSTEP = 5000
+  integer, parameter :: NSTEP = 29000
 
 ! parameters for the source
   double precision, parameter :: f0 = 0.1d0
@@ -52,8 +52,8 @@ module parameters
   ! if type_source == 1 
   integer, parameter :: wavefront = 2 ! 1. Wavefront in x direction, 2. Wavefront in y direction
   ! if type_source == 1,2 or 3
-  double precision, parameter :: xsource = 37000.d0
-  double precision, parameter :: ysource = 300.d0
+  double precision, parameter :: xsource = 100000.d0
+  double precision, parameter :: ysource = 100.d0
   integer, parameter :: ISOURCE = xsource / DELTAX + 1
   integer, parameter :: JSOURCE = ysource / DELTAY + 1
   ! if type_source == 3 
@@ -65,30 +65,23 @@ module parameters
   double precision :: distance2, factor_ssf
  
  	
- integer, parameter :: NREC_SET = 4
- ! define receivers along a line 
- !! for each set: define how many receivers are  on the line
- integer, dimension(NREC_SET), parameter :: NREC_PER_SET = (/10,7,10,7/)!,200,200,200/) 
- !! for each set: x_start, y_start, x_end, y_end
+ integer, parameter :: NREC_SET = 1
+ integer, dimension(NREC_SET), parameter :: NREC_PER_SET = (/6/) 
  double precision, dimension(NREC_SET,4), parameter :: REC_SET_INFO = transpose(reshape( &
-       (/2000, 20000, 47000, 20000,&
-         5000, 2500, 5000, 17500,&
-         2000,200,47000,200,&
-        45000, 2500, 45000, 17500 /), (/4,NREC_SET/)))!,&
-      !  0,	11000,	19900,	11000,&
-      !  0,	21000,	19900,	21000,&
-      !  0,	1000,	19900,	1000 /), (/4,NREC_SET/)))
-	
-        
- integer, parameter :: NREC = sum(NREC_PER_SET)
+      (/420000,	100,	430000,	100 /), (/4,NREC_SET/)))
+
+integer, dimension(100) :: list_irec_alt
+integer :: dim_list_irec        
+
+integer, parameter :: NREC = sum(NREC_PER_SET)
 
 
 
   logical, parameter :: atmospheric_model_file = .true.
    character(len=200) :: atmospheric_file_name_true = &
-     "./model_target.dat" !  !!! CHANGE _grav.dat"
+     "./atmospheric_model_Hukkakero_grav.dat"
    character(len=200) :: atmospheric_file_name_prior = & 
-     "./model.dat"
+     "./atmospheric_model_Hukkakero.dat"
 
   ! P-velocity and density
   ! the unrelaxed value is the value at frequency = 0 (the relaxed value would be the value at frequency = +infinity)
@@ -131,7 +124,7 @@ module parameters
   
  
 ! display information on the screen from time to time
-  integer, parameter :: IT_DISPLAY = 200 !NSTEP !  200! NSTEP !200
+  integer, parameter :: IT_DISPLAY = 1000 !NSTEP !  200! NSTEP !200
   ! save_normimage_overtime is a parameter to define the normalisation of the snapshots (only possible with method = 1)
   !! 1 : if want to save the image normalised over the maxmimum amplitude of the wave over all the propagation 
   !! 0 : if want to save the image normalised over the maximum amplitude of the current state 
@@ -194,11 +187,29 @@ module parameters
   double precision :: regul_term_rho0_prior,regul_term_p0_prior,regul_term_windx_prior
   double precision :: normsq_rho0_prior, normsq_p0_prior, normsq_windx_prior, normsq_windy_prior
 
+  ! Kernels shows the sensitivity to the model of :
+  !! 0 : Full waveform
+  !! 1 : Arrival time 
+  integer, parameter :: observation = 1
+  double precision, dimension(NSTEP) :: wr
+  double precision, dimension(NREC,2), parameter :: REC_wr = transpose(reshape( &
+      (/1315, 25, & !1280, 20, &
+        1320, 25, & !1284, 20, &
+        1325, 25, & !1288, 20, &
+        1330, 25, & !1292, 20, &
+        1335, 25, & !1296, 20, &
+        1340, 25 /), (/2,NREC/)))  !1300, 20 /), (/2,NREC/)))
+  
+  !integer :: i_tmin = tmin / DELTAT
+  !integer :: i_delta_tmin = delta_tmin / DELTAT
+  double precision :: timeshift
+  double precision, dimension(NSTEP,NREC) :: adjoint_source
+
   double precision, dimension(-1:NX_LOCAL+2, -1:NY_LOCAL+2) :: K_rho0, K_windx, K_windy, K_p0
 
   ! checkpointing
-  integer, parameter :: NFRAMES = 10
-  integer, parameter :: N_LOC_FRAMES = 10
+  integer, parameter :: NFRAMES = 100
+  integer, parameter :: N_LOC_FRAMES = 8
   double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2,1:4,1:NFRAMES) :: FRAMES
   double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2,1:4,1:N_LOC_FRAMES) :: LOC_FRAMES
 
@@ -344,9 +355,10 @@ module parameters
  !! 2 density, pressure, windx
  !! 3 log density, log celerity, windx
  !! 35 log density, wave speed, windx
+ !! 36 log density/density_prior, wave speed, windx
  !! 4 log density, log pressure, windx
  !! 5 log celerity, log pressure, windx
- integer, parameter :: parametrisation = 35
+ integer, parameter :: parametrisation = 36
 
  ! contains the scaling to have x1, x2, and x3 of the inversion varying in the same way
  ! Depend on the chosen parameterization :

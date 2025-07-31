@@ -82,7 +82,7 @@ double precision :: z, rho,  c, p, grav, w_P, gamma_ratio, &
   p0_true(:,:)              = rho0_true(:,:) * (cp_unrelaxed_true*cp_unrelaxed_true) / gamma_chimie(:,:)
   windx_true(:,:)           = windx_value_true
   windy_true(:,:)           = 0.d0
-  g(:,:)                    = 0.d0
+  g(:,:)                    = 9.81d0
   
   !!! 
   ! Priori model

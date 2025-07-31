@@ -45,6 +45,9 @@ subroutine compute_kernel()
   ! From this point of the code, we do not need anymore to save signals recorded at receivers
   save_sismos = .False.
   
+  ! Prepare adjoint source
+  call prepare_adjoint_source()
+  
   ! Start the kernel computation 
   ! Kernel is the sum over time of correlation between adjoint and backward field
   if (rank == 0 .and. method == 2) then
@@ -52,6 +55,7 @@ subroutine compute_kernel()
   endif
   
   do it=1,NSTEP
+  
     ! update old values
     ! old values are useful since the leap frog scheme and the derivative in time in
     ! the density kernel expression
@@ -73,7 +77,7 @@ subroutine compute_kernel()
         ! Launch a forward simulation from the previously selected frame
         call forwardproblem(p0_prior,rho0_prior,windx_prior,windy_prior,time_last_frame, NSTEP-it,1)
     endif
-    
+
     ! compute adjoint field
     call compute_adjoint(it)
 
