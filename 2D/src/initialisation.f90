@@ -339,3 +339,30 @@ subroutine get_norm_apriori()
    endif
    
 endsubroutine get_norm_apriori
+
+
+subroutine read_obs()
+
+use parameters, only : NREC, NSTEP, sispressure_true,path_obs_file
+implicit none
+
+double precision :: t, press 
+integer :: it, irec
+character(len=100) :: name_file_rec, path_obs_file_rec
+
+
+
+  do irec=1,NREC
+  
+    write(name_file_rec,"(i6.6,'.dat')") irec
+    path_obs_file_rec = trim(path_obs_file) // trim(name_file_rec)
+    open(2,file=path_obs_file_rec, status='old', action='read')
+
+      ! load model line by line (or altitude by altitude)
+      do it = 1, NSTEP
+        read(2,*)  t, press
+        sispressure_true(it, irec) = press      
+      enddo
+    close(2)
+  enddo
+endsubroutine read_obs

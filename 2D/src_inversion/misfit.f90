@@ -150,6 +150,13 @@ integer :: j
       flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_c0
       flat_grad(2*NY_LOCAL + j)= scale_model(3) * scalar_grad_windx
     enddo
+
+    ! Interpolation
+    if (j_rank == JSOURCE / NY_LOCAL) then
+      flat_grad(jsource) = (flat_grad(jsource-1) + flat_grad(jsource+1)) *0.5
+      flat_grad(NY_LOCAL + jsource) = (flat_grad(NY_LOCAL+ jsource-1) + flat_grad(NY_LOCAL+jsource+1)) * 0.5
+      flat_grad(2*NY_LOCAL+jsource) = (flat_grad(2*NY_LOCAL + jsource-1) + flat_grad(2*NY_LOCAL + jsource+1)) *0.5
+    endif
     
   elseif (parametrisation == 2) then
     ! density, wind, pressure
@@ -241,6 +248,45 @@ integer :: j
    endif
 
    call MPI_BARRIER(MPI_COMM_WORLD, code)    
+
+
+  elseif (parametrisation == 36) then
+   print *, "chosen param is ", parametrisation
+   ! log density, wind, log velocity
+    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+                     * p0_prior(1:NX_LOCAL,1:NY_LOCAL)/ rho0_prior(1:NX_LOCAL,1:NY_LOCAL))
+    grad_c0(:,:) = 2 * c0_prior(1:NX_LOCAL,1:NY_LOCAL) * rho0_prior(1:NX_LOCAL,1:NY_LOCAL) &
+                      / gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+                       * K_p0(1:NX_LOCAL,1:NY_LOCAL)
+    grad_lnrho0(:,:) =  p0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL) &
+                       + rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL) 
+  
+    call MPI_BARRIER(MPI_COMM_WORLD, code)
+  
+    do j=1,NY_LOCAL
+      call MPI_ALLREDUCE( sum(grad_lnrho0(:,j)), scalar_grad_lnrho0,1,MPI_DOUBLE_PRECISION,& 
+                        MPI_SUM, row_Comm,ierr)
+      call MPI_ALLREDUCE( sum(grad_c0(:,j)), scalar_grad_c0,1,MPI_DOUBLE_PRECISION,& 
+                        MPI_SUM, row_Comm,ierr)
+      call MPI_ALLREDUCE( sum(K_windx(:,j)), scalar_grad_windx,1,MPI_DOUBLE_PRECISION,&
+                        MPI_SUM, row_Comm,ierr)
+
+
+      flat_grad(j) = scale_model(1) * scalar_grad_lnrho0
+      flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_c0 
+      flat_grad(2*NY_LOCAL + j) = scale_model(3) * scalar_grad_windx
+    enddo
+  
+
+! Interpolation
+if (j_rank == JSOURCE / NY_LOCAL) then
+  flat_grad(jsource) = (flat_grad(jsource-1) + flat_grad(jsource+1)) *0.5 
+  flat_grad(NY_LOCAL + jsource) = (flat_grad(NY_LOCAL+ jsource-1) + flat_grad(NY_LOCAL+jsource+1)) * 0.5
+  flat_grad(2*NY_LOCAL+jsource) = (flat_grad(2*NY_LOCAL + jsource-1) + flat_grad(2*NY_LOCAL + jsource+1)) *0.5
+endif
+
+  call MPI_BARRIER(MPI_COMM_WORLD, code)
+
 
   elseif (parametrisation == 4) then
     ! log density, wind, log pressure
@@ -351,6 +397,22 @@ integer :: j
                                    c0_prior(1:NX_LOCAL,1:NY_LOCAL)**2 &
                                    / gamma_chimie(1:NX_LOCAL,1:NY_LOCAL)
   
+
+  else if (parametrisation == 36) then
+   ! log density, wind, log velocity
+   flat_rho0(1:NY_LOCAL) = density_prior * exp(scale_model(1)  * flat_model(1:NY_LOCAL))
+   flat_c0(1:NY_LOCAL) = scale_model(2)  * flat_model(NY_LOCAL+1:2*NY_LOCAL)
+   flat_windx(1:NY_LOCAL) = scale_model(3) * flat_model(1+2*NY_LOCAL:Nflat)
+   
+   do j=1,NY_LOCAL
+      rho0_prior(:,j) = flat_rho0(j)
+      c0_prior(:,j) = flat_c0(j)
+      windx_prior(:,j) = flat_windx(j)
+   enddo
+   p0_prior(1:NX_LOCAL,1:NY_LOCAL) = rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * &
+                                   c0_prior(1:NX_LOCAL,1:NY_LOCAL)**2 &
+                                   / gamma_chimie(1:NX_LOCAL,1:NY_LOCAL)
+
 
   else if (parametrisation == 3) then
    ! log density, wind, log velocity
@@ -484,7 +546,7 @@ endsubroutine flatmodel2priormodel
 
 subroutine priormodel2flatmodel(flat_model)
 
-use parameters, only : NX_LOCAL, NY_LOCAL, Nflat, &
+use parameters, only : NX_LOCAL, NY_LOCAL, Nflat,density_prior, &
                        scale_model, rho0_prior, c0_prior, p0_prior, windx_prior, parametrisation
 implicit none
 double precision, dimension(1:Nflat):: flat_model
@@ -513,6 +575,11 @@ double precision, dimension(1:Nflat):: flat_model
   flat_model(NY_LOCAL+1:2*NY_LOCAL) = c0_prior(25,1:NY_LOCAL)/ scale_model(2)
   flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(25,1:NY_LOCAL)/ scale_model(3)
   
+ elseif (parametrisation == 36) then
+  ! log density, wind, log velocity
+  flat_model(1:NY_LOCAL) = log(rho0_prior(25,1:NY_LOCAL)/density_prior) / scale_model(1)
+  flat_model(NY_LOCAL+1:2*NY_LOCAL) = c0_prior(25,1:NY_LOCAL)/ scale_model(2)
+  flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(25,1:NY_LOCAL)/ scale_model(3)
 
   elseif (parametrisation == 4) then 
   ! log density, wind, log pressure

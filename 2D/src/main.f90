@@ -145,13 +145,17 @@ program main
  
    ! TODO add an option to load seismograms directly
    
-   ! get an observation (for now, you can only create observations)
-   ! initialise all the parameters to solve the forward problem (p',rho',vx',vy' and PML memory variables)
-   call reset_forward()
-   ! parameter to save images and pressure records
-   save_sismos = .True.
-   ! solve the forward problem
-   call forwardproblem(p0_true, rho0_true, windx_true, windy_true,  1, NSTEP, 2) 
+      ! get an observation (for now, you can only create observations)
+   if (observation_from_file == 0) then
+     ! initialise all the parameters to solve the forward problem (p',rho',vx',vy' and PML memory variables)
+     call reset_forward()
+     ! parameter to save images and pressure records
+     save_sismos = .True.
+     ! solve the forward problem
+     call forwardproblem(p0_true, rho0_true, windx_true, windy_true,  1, NSTEP, 2) 
+   else 
+     call read_obs()
+   endif
 
    ! get normalisation informations from observations
    call write_seismograms(sisvx,sisvy,sispressure,sisrhop,NSTEP,NREC,DELTAT,t0,2)

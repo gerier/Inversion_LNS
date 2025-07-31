@@ -64,7 +64,16 @@ module parameters
   ! spread the source spatial function
   double precision :: distance2, factor_ssf
  
- 	
+ 
+ ! read from file or use a simulation
+ ! 0: observation are created by a resolution of a simulation
+ ! 1: observation are read from file
+ integer :: observation_from_file = 1
+ ! If observation_from_file == 1, read from a file of the form :
+ character(len=200) :: path_obs_file = &
+     "./Data/real_pressure_file_obs_"
+        
+
  integer, parameter :: NREC_SET = 1
  integer, dimension(NREC_SET), parameter :: NREC_PER_SET = (/6/) 
  double precision, dimension(NREC_SET,4), parameter :: REC_SET_INFO = transpose(reshape( &
