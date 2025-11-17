@@ -86,8 +86,8 @@ do irec=1,NREC
    wr(i_tmin: i_tmin+i_delta_tmin) = 1.0d0
    it_t0 = t0/DELTAT
    do it=1,it_t0
-     wr(i_tmin - it) = 0.5 - 0.5 * cos(PI*it*DELTAT/t0)
-     wr(it + i_tmin + i_delta_tmin) = 0.5 - 0.5 * cos(PI*it*DELTAT/t0)
+     wr(i_tmin - it) = 0.5 + 0.5 * cos(PI*it*DELTAT/t0)
+     wr(it + i_tmin + i_delta_tmin) = 0.5 + 0.5 * cos(PI*it*DELTAT/t0)
    enddo
 
    call integral_time_prod(dtsispressure(:,irec), dtsispressure(:,irec), Nr(irec))
