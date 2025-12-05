@@ -67,15 +67,19 @@ endsubroutine integral_time_prod
 subroutine get_Tr_adjoint_source()
 
 use parameters, only : NSTEP, DELTAT, ONE_OVER_DELTAT, sispressure_prior, sispressure_true, NREC, &
-                       adjoint_source, wr, timeshift,t0, PI, REC_wr
+                       adjoint_source, wr, timeshift,t0, PI, REC_wr, NY_LOCAL, NX_LOCAL, j_rank, i_rank, iy_rec,ix_rec
 implicit none
 
 double precision, dimension(NREC) :: Nr
 double precision, dimension(NSTEP,NREC) :: dtsispressure
+double precision, dimension(NSTEP,NREC) :: d2tsispressure
+double precision :: aux
 integer :: irec, it_t0, it, i_tmin, i_delta_tmin
 
 dtsispressure(:,:) = 0.d0
 dtsispressure(2:NSTEP-1,:) = (sispressure_prior(3:NSTEP,:) - sispressure_prior(1:NSTEP-2,:)) * 0.5 * ONE_OVER_DELTAT
+d2tsispressure(2:NSTEP-1,:) = -(sispressure_prior(3:NSTEP,:) - sispressure_prior(1:NSTEP-2,:)) * 0.5 * ONE_OVER_DELTAT
+
 
 Nr(:) = 0.0d0
 do irec=1,NREC
@@ -90,11 +94,12 @@ do irec=1,NREC
      wr(it + i_tmin + i_delta_tmin) = 0.5 + 0.5 * cos(PI*it*DELTAT/t0)
    enddo
 
-   call integral_time_prod(dtsispressure(:,irec), dtsispressure(:,irec), Nr(irec))
-   Nr(irec) = -1 * Nr(irec)
-   call get_timeshift(sispressure_prior(:,irec), sispressure_true(:,irec), i_tmin, i_delta_tmin, timeshift)  ! TODO check the sign, if bad sign, invere prior and true
-   adjoint_source(:,irec) = timeshift * dtsispressure(:,irec) * wr(:)/Nr(irec)
-
+   if (i_rank == (ix_rec(irec)-1)/NX_LOCAL .and. j_rank == (iy_rec(irec)-1)/NY_LOCAL) then
+     call integral_time_prod(dtsispressure(:,irec), dtsispressure(:,irec), Nr(irec))
+     Nr(irec) = -1 * Nr(irec)
+     call get_timeshift(sispressure_prior(:,irec), sispressure_true(:,irec), i_tmin, i_delta_tmin, timeshift)  ! TODO check the sign, if bad sign, invere prior and true
+     adjoint_source(:,irec) = timeshift * d2tsispressure(:,irec) * wr(:)/Nr(irec)
+   endif
 enddo
 
 endsubroutine get_Tr_adjoint_source
