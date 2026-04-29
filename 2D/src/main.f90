@@ -145,7 +145,7 @@ program main
  
    ! TODO add an option to load seismograms directly
    
-      ! get an observation (for now, you can only create observations)
+   ! get an observation (for now, you can only create observations)
    if (observation_from_file == 0) then
      ! initialise all the parameters to solve the forward problem (p',rho',vx',vy' and PML memory variables)
      call reset_forward()
@@ -153,19 +153,33 @@ program main
      save_sismos = .True.
      ! solve the forward problem
      call forwardproblem(p0_true, rho0_true, windx_true, windy_true,  1, NSTEP, 2) 
-   else 
-     call read_obs()
+   elseif (observation_from_file == 1) then
+       save_sismos = .True. 
+       call read_obs()
    endif
 
-   ! get normalisation informations from observations
-   call write_seismograms(sisvx,sisvy,sispressure,sisrhop,NSTEP,NREC,DELTAT,t0,2)
-   call MPI_BARRIER(MPI_COMM_WORLD, code)
-   sispressure_true(:,:) = sispressure(:,:) 
+    if (observation_from_file == 2) then ! Observation is delay time from cross-correlation 
+      if (observation == 0) then
+        print *, "ERROR: if the given observation is a delay time, should be sensitivity kernels of arrival time."
+      endif
+      if (NREC /= 1) then
+        print *, "ERORR: if observation is a delay time, only 1 receiver is possible (for now)."
+      endif
+      !
+      REC_wr(:,1) = 0 !-t0 + DELTAT
+      REC_wr(:,2) = NSTEP * DELTAT ! -t0 + DELTAT + NSTEP * DELTAT
+
+    else
+       ! get normalisation informations from observations
+       call write_seismograms(sisvx,sisvy,sispressure,sisrhop,NSTEP,NREC,DELTAT,t0,2)
+       call MPI_BARRIER(MPI_COMM_WORLD, code)
+       sispressure_true(:,:) = sispressure(:,:) 
    
-   do irec=1,NREC
-    normsq_pressure_true_per_rec(irec) = DELTAT * DELTAX *DELTAY * sum(sispressure_true(:,irec)**2)
-   enddo
-     
+       do irec=1,NREC
+        normsq_pressure_true_per_rec(irec) = DELTAT * DELTAX *DELTAY * sum(sispressure_true(:,irec)**2)
+       enddo
+   endif
+
    ! compute kernel
    call compute_kernel()
    call write_kernels()
@@ -188,7 +202,7 @@ program main
      ! get normalisation informations from observations
      sispressure_true(:,:) = sispressure(:,:) 
      do irec=1,NREC
-       normsq_pressure_true_per_rec(irec) = DELTAT * DELTAX * DELTAY * sum(sispressure_true(:,irec)**2)
+       normsq_pressure_true_per_rec(irec) =  DELTAT * DELTAX * DELTAY * sum(sispressure_true(:,irec)**2)
      enddo
 
      ! atmospheric model is saved in a vector form for inverse problem

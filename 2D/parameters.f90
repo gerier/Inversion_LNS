@@ -10,11 +10,11 @@ module parameters
  
  
 ! total number of grid points in each direction of the grid
-  integer, parameter :: NY = 1507
+  integer, parameter :: NY = 1504
   integer, parameter :: NX = 4608
 
-  integer, parameter :: NPROC_X = 36 !! 20
-  integer, parameter :: NPROC_Y = 11 !! 20
+  integer, parameter :: NPROC_X = 24 !! 20
+  integer, parameter :: NPROC_Y = 16 !! 20
   integer, parameter :: NPROC = NPROC_X * NPROC_Y !! 20
   
   integer, parameter :: NX_LOCAL = NX / NPROC_X
@@ -68,7 +68,9 @@ module parameters
  ! read from file or use a simulation
  ! 0: observation are created by a resolution of a simulation
  ! 1: observation are read from file
- integer :: observation_from_file = 1
+ ! 2: observation is a delay time (arrival time kernel)
+ ! 3: no observation (for arrival time sensitivity kernel) / Tr - Tr^obs = 1 (only for 1 receiver)
+ integer :: observation_from_file = 0
  ! If observation_from_file == 1, read from a file of the form :
  character(len=200) :: path_obs_file = &
      "./Data/real_pressure_file_obs_"
@@ -91,6 +93,7 @@ integer, parameter :: NREC = sum(NREC_PER_SET)
      "./atmospheric_model_Hukkakero_grav.dat"
    character(len=200) :: atmospheric_file_name_prior = & 
      "./atmospheric_model_Hukkakero.dat"
+
 
   ! P-velocity and density
   ! the unrelaxed value is the value at frequency = 0 (the relaxed value would be the value at frequency = +infinity)
@@ -191,6 +194,7 @@ integer, parameter :: NREC = sum(NREC_PER_SET)
   double precision, dimension(NSTEP,NREC) :: sisvx,sisvy,sispressure,sisrhop
 
   double precision, dimension(NSTEP,NREC) :: sispressure_true, sispressure_prior
+  double precision, dimension(NSTEP) :: sispressure_source
   double precision :: normsq_pressure_true
   double precision, dimension(NREC) :: normsq_pressure_true_per_rec
   double precision :: regul_term_rho0_prior,regul_term_p0_prior,regul_term_windx_prior
@@ -201,13 +205,20 @@ integer, parameter :: NREC = sum(NREC_PER_SET)
   !! 1 : Arrival time 
   integer, parameter :: observation = 1
   double precision, dimension(NSTEP) :: wr
+  !double precision, dimension(NREC,2) :: REC_wr = transpose(reshape( &
+  !    (/1315, 25, & !1280, 20, &
+  !      1320, 25, & !1284, 20, &
+  !      1325, 25, & !1288, 20, &
+  !      1330, 25, & !1292, 20, &
+  !      1335, 25, & !1296, 20, &
+  !      1340, 25 /), (/2,NREC/)))  !1300, 20 /), (/2,NREC/)))
   double precision, dimension(NREC,2), parameter :: REC_wr = transpose(reshape( &
-      (/1315, 25, & !1280, 20, &
-        1320, 25, & !1284, 20, &
-        1325, 25, & !1288, 20, &
-        1330, 25, & !1292, 20, &
-        1335, 25, & !1296, 20, &
-        1340, 25 /), (/2,NREC/)))  !1300, 20 /), (/2,NREC/)))
+      (/1280+12, 20, & !1280, 20, &
+        1285+12, 20, & !1284, 20, &
+        1290+12, 20, & !1288, 20, &
+        1295+12, 20, & !1292, 20, &
+        1300+12, 20, & !1296, 20, &
+        1305+12, 20 /), (/2,NREC/)))  !1300, 20 /), (/2,NREC/)))
   
   !integer :: i_tmin = tmin / DELTAT
   !integer :: i_delta_tmin = delta_tmin / DELTAT
@@ -217,8 +228,8 @@ integer, parameter :: NREC = sum(NREC_PER_SET)
   double precision, dimension(-1:NX_LOCAL+2, -1:NY_LOCAL+2) :: K_rho0, K_windx, K_windy, K_p0
 
   ! checkpointing
-  integer, parameter :: NFRAMES = 100
-  integer, parameter :: N_LOC_FRAMES = 8
+  integer, parameter :: NFRAMES = 50
+  integer, parameter :: N_LOC_FRAMES = 50
   double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2,1:4,1:NFRAMES) :: FRAMES
   double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2,1:4,1:N_LOC_FRAMES) :: LOC_FRAMES
 
@@ -378,7 +389,7 @@ integer, parameter :: NREC = sum(NREC_PER_SET)
   ! if parametrisation == 5 then x1: log celerity, x2: log pressure, x3: windx (choose 1,1,1)
  ! Ref : Nocedal, (2006) Numerical Optimisation. 
  ! Scaling is defined in Scaling, page 26 (chapitre 2. Fundamentals of unconstrained optimization)
- double precision, dimension(3), parameter :: scale_model = (/1.0d0,100.0d0,100.0d0/)
+ double precision, dimension(3), parameter :: scale_model = (/0.10d0,100.0d0,100.0d0/)
  
  ! number of iterations to start with steepest descent direction
  integer :: steepest_nbiter_default = 5

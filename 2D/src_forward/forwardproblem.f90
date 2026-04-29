@@ -553,6 +553,12 @@ implicit none
         sisrhop(it,irec) = rhop(ix_irec,iy_irec)
       endif 
   enddo
+  
+  ! If observation is delay time, need to save the pressure perturbation at the source (for computed the delay between the source and the receiver).  
+  if (observation_from_file == 2 .and. i_rank == ISOURCE / NX_LOCAL .and. j_rank == JSOURCE / NY_LOCAL) then
+     sispressure_source(it) = pressure(ISOURCE,JSOURCE)
+  endif
+  
 
    ! update the maxvalue to create normalised image
    if (save_normimage_overtime == 1) then
