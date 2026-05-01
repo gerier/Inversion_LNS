@@ -373,10 +373,13 @@ endsubroutine compute_adjoint
 
 subroutine prepare_adjoint_source()
 use parameters, only : sispressure_true, sispressure_prior, normsq_pressure_true_per_rec,&
-                      NSTEP, NREC, t0, DELTAT, PI, observation, adjoint_source, TINYVAL
+                      NSTEP, NREC, t0, DELTAT, PI, observation, adjoint_source, TINYVAL, &
+                      wr, window_waveform, REC_wr, save_adjoint_source
 implicit none
 integer :: irec, it_step
 double precision, dimension(NSTEP) :: coef_damping
+integer :: it_t0, it, i_tmin, i_delta_tmin
+integer :: i,j
 
   if (observation == 0) then
     coef_damping(:) = 1.0d0
@@ -389,9 +392,27 @@ double precision, dimension(NSTEP) :: coef_damping
   
     adjoint_source(:,:) = (sispressure_true(:,:) - sispressure_prior(:,:))
     do irec=1,NREC
+    
+      if (window_waveform == 1) then
+         wr(:) = 0.d0
+         i_tmin = REC_wr(irec,1) / DELTAT
+         i_delta_tmin = REC_wr(irec,2) / DELTAT
+         wr(i_tmin: i_tmin+i_delta_tmin) = 1.0d0
+         ! the cross-correlation window start with the first part of a hann window,
+         ! and end with the second half of the hann window 
+         ! this allows to have a signal that have 0 energy at the start and end of the window  
+         it_t0 = t0/DELTAT
+         do it=1,it_t0
+            wr(i_tmin - it) = 0.5 + 0.5 * cos(PI*it*DELTAT/t0)
+            wr(it + i_tmin + i_delta_tmin) = 0.5 + 0.5 * cos(PI*it*DELTAT/t0)
+         enddo
+      else
+        wr(:) = 1.0
+      endif
+     
       if (normsq_pressure_true_per_rec(irec) > TINYVAL) then
         adjoint_source(:,irec) = adjoint_source(:,irec) / normsq_pressure_true_per_rec(irec)
-        adjoint_source(:,irec) =  adjoint_source(:,irec) * coef_damping(:)
+        adjoint_source(:,irec) =  adjoint_source(:,irec) * coef_damping(:) * wr(:)
       endif
     enddo
     
@@ -401,6 +422,15 @@ double precision, dimension(NSTEP) :: coef_damping
    
   endif
   
+  ! save source adjoint
+  if (save_adjoint_source) then
+    open(unit=10, file='./OUTPUT/source_adjointe.txt', status='replace', action='write')
+    do i = 1, NSTEP
+       write(10, '(50(ES16.8,1X))') (adjoint_source(i,j), j=1,NREC)
+    end do
+    close(10)
+  endif
+
 endsubroutine prepare_adjoint_source
 
 

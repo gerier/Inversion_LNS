@@ -189,7 +189,8 @@ integer, parameter :: NREC = sum(NREC_PER_SET)
   double precision, dimension(NREC) :: xrec,yrec
   integer :: myNREC
   logical :: save_sismos ! to save or not the seismograms
-  
+  logical, parameter :: save_adjoint_source = .False. 
+
 ! for seismograms
   double precision, dimension(NSTEP,NREC) :: sisvx,sisvy,sispressure,sisrhop
 
@@ -204,6 +205,7 @@ integer, parameter :: NREC = sum(NREC_PER_SET)
   !! 0 : Full waveform
   !! 1 : Arrival time 
   integer, parameter :: observation = 1
+  integer, parameter :: window_waveform = 1 ! only for observation == 0
   double precision, dimension(NSTEP) :: wr
   !double precision, dimension(NREC,2) :: REC_wr = transpose(reshape( &
   !    (/1315, 25, & !1280, 20, &
