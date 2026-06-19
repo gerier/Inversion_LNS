@@ -341,7 +341,7 @@ subroutine get_norm_apriori()
 endsubroutine get_norm_apriori
 
 
-subroutine read_obs()
+subroutine read_obs2()
 
 use parameters, only : NREC, NSTEP, sispressure_true,path_obs_file
 implicit none
@@ -365,4 +365,43 @@ character(len=100) :: name_file_rec, path_obs_file_rec
       enddo
     close(2)
   enddo
-endsubroutine read_obs
+endsubroutine read_obs2
+
+subroutine read_obs()
+
+use parameters, only : NREC, NSTEP, sispressure_true, path_obs_file
+implicit none
+
+double precision :: t, press
+integer :: it, irec, ios, k
+character(len=100) :: name_file_rec, path_obs_file_rec
+character(len=200) :: line
+
+do irec = 1, NREC
+
+   write(name_file_rec,"(i6.6,'.dat')") irec
+   path_obs_file_rec = trim(path_obs_file) // trim(name_file_rec)
+
+   open(2, file=path_obs_file_rec, status='old', action='read')
+
+   do it = 1, NSTEP
+
+      read(2,'(A)', iostat=ios) line
+      if (ios /= 0) exit
+
+      ! remplacer virgule par espace
+      do k = 1, len_trim(line)
+         if (line(k:k) == ',') line(k:k) = ' '
+      end do
+
+      read(line, *, iostat=ios) t, press
+
+      sispressure_true(it, irec) = press
+
+   end do
+
+   close(2)
+
+end do
+
+end subroutine read_obs

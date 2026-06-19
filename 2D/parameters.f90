@@ -231,9 +231,14 @@ integer, parameter :: NREC = sum(NREC_PER_SET)
 
   ! checkpointing
   integer, parameter :: NFRAMES = 50
-  integer, parameter :: N_LOC_FRAMES = 50
+  integer, parameter :: N_LOC_FRAMES = 4
   double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2,1:4,1:NFRAMES) :: FRAMES
   double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2,1:4,1:N_LOC_FRAMES) :: LOC_FRAMES
+
+  ! choose the desired kernel 
+  logical :: validation = .True.
+  integer ::  which_kernel = 1
+  double precision, dimension(-1:NX_LOCAL+2,-1:NY_LOCAL+2) :: K
 
   ! PML parameters
   ! flags to add PML layers to the edges of the grid

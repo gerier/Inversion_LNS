@@ -598,7 +598,7 @@ implicit none
      call MPI_BARRIER(MPI_COMM_WORLD, code)
       
      ! display informations
-     if (rank==0) then
+     if ((.not.validation) .and. rank==0) then
     
          ! count elapsed wall-clock time
          call date_and_time(datein,timein,zone,time_values)

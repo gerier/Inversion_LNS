@@ -180,10 +180,15 @@ program main
        enddo
    endif
 
+
+   if (validation) then
+   call compute_gradient()
+   
+   else 
    ! compute kernel
    call compute_kernel()
    call write_kernels()
-	
+endif	
  
 
   !!! INVERSE PROBLEM

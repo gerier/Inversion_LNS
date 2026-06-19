@@ -103,5 +103,7 @@ subroutine reset_kernel()
   K_windx(:,:)   = ZERO
   K_windy(:,:)   = ZERO
   
+  ! kernel variables  
+  K(:,:)    = ZERO
 endsubroutine reset_kernel
 

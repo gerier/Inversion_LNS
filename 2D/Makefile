@@ -5,6 +5,7 @@ mcmodel=large
 SRCS := src/main.f90 \
 	src_gradient/checkpointing_double.f90 \
 	src_gradient/lib_arrivaltime.f90 \
+	src_gradient/compute_gradient.f90 \
 	src_gradient/compute_adjoint.f90 \
 	src_gradient/derivative_first_line_moinsdegen.f90 \
 	src_gradient/compute_kernel_interpolation.f90 \
