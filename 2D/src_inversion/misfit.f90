@@ -1,4 +1,14 @@
 subroutine f(m,fm)
+!-----------------------------------------------------------------------
+! Compute the objective function.
+!
+! The objective function consists of:
+!   (i) a data misfit
+!   (ii) an optional regularization term.
+!
+! The forward problem is solved for the current model and the synthetic
+! pressure field is compared with the observed pressure at each receiver.
+!-----------------------------------------------------------------------
 use MPI
 use parameters
 implicit none
@@ -8,19 +18,21 @@ implicit none
  double precision, dimension(NREC) :: fm_local_per_rec
  double precision :: regul_term_p0, regul_term_rho0,regul_term_windx
  double precision, dimension(1:Nflat) :: normsq_m, normsq_mm0
+ 
+ ! Initialize variables
  fm_local_per_rec(:) = 0.0d0
-
  factor_regul_SRdist(:) = 1.0
 
  call MPI_BARRIER(MPI_COMM_WORLD, code)
  
  call flatmodel2priormodel(m)
 
+! solve the forward problem
  call reset_forward() 
  call forwardproblem(p0_prior, rho0_prior, windx_prior, windy_prior,  1, NSTEP, 1) 
  sispressure_prior(:,:) = sispressure(:,:)
  
- !
+! misfit of pressure waveform
  do irec=1,NREC
    if (i_rank == (ix_rec(irec)-1)/NX_LOCAL .and. j_rank == (iy_rec(irec)-1)/NY_LOCAL) then
    if ( normsq_pressure_true_per_rec(irec) > TINYVAL) then
@@ -28,7 +40,7 @@ implicit none
                     / normsq_pressure_true_per_rec(irec) 
    endif
    endif
-enddo
+ enddo
 
  call MPI_BARRIER(MPI_COMM_WORLD, code)
  call MPI_ALLREDUCE(sum(fm_local_per_rec), fm, 1, MPI_DOUBLE_PRECISION, MPI_SUM,  MPI_COMM_WORLD, code)
@@ -38,25 +50,26 @@ enddo
 
  count_f = count_f + 1
  
+ ! add a regularization term
  if (type_regul_term == 1) then
-normsq_m(:) = 0.0d0
+  normsq_m(:) = 0.0d0
   normsq_mm0= factor_regul_SRdist*(m-m0)**2
   normsq_mm0(1:2*NY_LOCAL) = normsq_mm0(1:2*NY_LOCAL) / m0(1:2*NY_LOCAL)**2
   
-  call MPI_ALLREDUCE( sum(normsq_mm0(1:NY_LOCAL)), regul_term_rho0, 1, MPI_DOUBLE_PRECISION,&
-                                                                                    MPI_SUM,  MPI_COMM_WORLD, code)
-  call MPI_ALLREDUCE( sum(normsq_mm0(NY_LOCAL+1:2*NY_LOCAL)), regul_term_p0,1,MPI_DOUBLE_PRECISION,&
-                                                                                    MPI_SUM, MPI_COMM_WORLD,code)
-  call MPI_ALLREDUCE( sum(normsq_mm0(2*NY_LOCAL+1:Nflat)), regul_term_windx, 1, MPI_DOUBLE_PRECISION, &
-                                                                                    MPI_SUM,  MPI_COMM_WORLD, code)
+  call MPI_ALLREDUCE( sum(normsq_mm0(1:NY_LOCAL)), regul_term_rho0, &
+              1,MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, code)
+  call MPI_ALLREDUCE( sum(normsq_mm0(NY_LOCAL+1:2*NY_LOCAL)), regul_term_p0, &
+              1,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,code)
+  call MPI_ALLREDUCE( sum(normsq_mm0(2*NY_LOCAL+1:Nflat)), regul_term_windx, &
+              1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD, code)
                                                                                     
-  fx_regul =  regul_weight * 0.5d0 * &
+  fx_regul =  regul_weight * 0.5d0 * DELTAY * &
          (regul_term_p0 + regul_term_rho0 + regul_term_windx)
   fm = fm + fx_regul
  
  else
   if (type_regul_term /= 0) then 
-   print *, "ERROR: Type of the regularisation term: Unknown"
+   print *, "ERROR: Unknown regularization type"
    stop
    endif
  endif
@@ -64,94 +77,107 @@ normsq_m(:) = 0.0d0
 endsubroutine f
 
 
-!!!! ! regularisation
-! attention au cas m = m0
-! attention à la parametrisation choisie
+!!!! Note: the regularization term requires further validation (TODO).
+! Special care is required when m = m0
+! The implementation depends on the selected parameterization.
 
 subroutine df(m,flat_grad)
-
+!-----------------------------------------------------------------------
+! Compute the gradient of the objective function.
+!
+! The gradient is obtained from the sensitivity kernels and optionally
+! augmented with the gradient of the regularization term.
+!-----------------------------------------------------------------------
 use parameters
 implicit none 
 double precision, dimension(1:Nflat) :: m,flat_grad,reg_grad
 double precision :: ONE_OVER_DX2, ONE_OVER_DY2, ONE_OVER_DXDY
 
+  ! initialization
+  ONE_OVER_DX2 = 1.0d0 / DELTAX**4
+  ONE_OVER_DY2 = 1.0d0 / DELTAY**4
+  ONE_OVER_DXDY = 1.0d0 / DELTAX**2 / DELTAY**2
 
-ONE_OVER_DX2 = 1 / DELTAX**4
-ONE_OVER_DY2 = 1 / DELTAY**4
-ONE_OVER_DXDY = 1 / DELTAX**2 / DELTAY**2
-
+  factor_regul_SRdist(:) = 1.0
+ 
+  ! sensitivity kernel computations
   call MPI_BARRIER(MPI_COMM_WORLD, code)
   call flatmodel2priormodel(m)
   call compute_kernel()
   call kernelparam2inversionparam(flat_grad)
 
- if (type_regul_term == 1) then
+  ! regularization term
+  if (type_regul_term == 1) then
  
     reg_grad(:) = 0.0d0
-    !reg_grad(1:NY_LOCAL) = (m(1:NY_LOCAL) - m0(1:NY_LOCAL)) /m0(1:NY_LOCAL)**2
-    !reg_grad(NY_LOCAL+1:2*NY_LOCAL) = (m(NY_LOCAL+1:2*NY_LOCAL) - m0(NY_LOCAL+1:2*NY_LOCAL)) / m0(NY_LOCAL+1:2*NY_LOCAL)**2
+    reg_grad(1:NY_LOCAL) = (m(1:NY_LOCAL) - m0(1:NY_LOCAL)) /m0(1:NY_LOCAL)**2
+    reg_grad(NY_LOCAL+1:2*NY_LOCAL) = (m(NY_LOCAL+1:2*NY_LOCAL) - m0(NY_LOCAL+1:2*NY_LOCAL)) / m0(NY_LOCAL+1:2*NY_LOCAL)**2
     reg_grad(2*NY_LOCAL+1:3*NY_LOCAL) = (m(2*NY_LOCAL+1:3*NY_LOCAL) - m0(2*NY_LOCAL+1:3*NY_LOCAL)) 
 
-   flat_grad = flat_grad +  regul_weight * reg_grad * factor_regul_SRdist
+    flat_grad = flat_grad + DELTAY * regul_weight * reg_grad * factor_regul_SRdist
    
-   
- 
- else 
-   if (type_regul_term /= 0) then 
-   print *, "ERROR: Type of the regularisation term: Unknown"
-   stop
-   endif
- endif
+  else 
+    if (type_regul_term /= 0) then 
+      print *, "ERROR: Type of the regularisation term: Unknown"
+      stop
+    endif
+  endif
 
-   
   count_grad = count_grad + 1
 endsubroutine df
 
 
 
 subroutine kernelparam2inversionparam(flat_grad)
-
-use parameters
+!-----------------------------------------------------------------------
+! Convert sensitivity kernels into the inversion parameterization.
+!
+! Depending on the selected parameterization, the physical kernels
+! (density, pressure, horizontal wind) are transformed into the
+! variables optimized by the inversion.
+!-----------------------------------------------------------------------
+use mpi
+use parameters, only : p0_prior, rho0_prior, c0_prior, gamma_chemestry, &
+                       K_rho0, K_p0, K_windx, &
+                       NX_LOCAL, NY_LOCAL, Nflat, ZERO, JSOURCE, &
+                       parametrisation, scale_model, &
+                       code, ierr, j_rank, row_Comm         
 implicit none
 double precision, dimension (1:NX_LOCAL,1:NY_LOCAL) :: grad_c0, grad_rho0, grad_lnc0, grad_lnrho0, grad_lnp0
 double precision, dimension(1:Nflat) :: flat_grad
 double precision :: scalar_grad_lnrho0, scalar_grad_lnc0, scalar_grad_lnp0, &
-                scalar_grad_rho0, scalar_grad_c0, scalar_grad_p0, &
-                scalar_grad_windx
+                    scalar_grad_rho0, scalar_grad_c0, scalar_grad_p0, &
+                    scalar_grad_windx
 integer :: j
 
-  K_rho0(:,:) = K_rho0(:,:) * DELTAX * DELTAY
-  K_p0(:,:) = K_p0(:,:) * DELTAX * DELTAY
-  K_windx(:,:) = K_windx(:,:) * DELTAX * DELTAY
-
   if (parametrisation == 1) then
-    ! density, wind, velocity
-    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+    ! Density, wave speed, horizontal wind
+    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL) &
                   * p0_prior(1:NX_LOCAL,1:NY_LOCAL)/ rho0_prior(1:NX_LOCAL,1:NY_LOCAL))
     grad_c0(:,:) = 2 * c0_prior(1:NX_LOCAL,1:NY_LOCAL) * rho0_prior(1:NX_LOCAL,1:NY_LOCAL) &
-                    / gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+                    / gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL) &
                     * K_p0(1:NX_LOCAL,1:NY_LOCAL)
     grad_rho0(:,:) = p0_prior(1:NX_LOCAL,1:NY_LOCAL) / rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL) &
                      + K_rho0(1:NX_LOCAL,1:NY_LOCAL) 
 
     do j=1,NY_LOCAL
-      ! gather information of different mpi processus 
+      ! Sum contributions from all MPI processes 
       call MPI_ALLREDUCE( sum(grad_c0(:,j)), scalar_grad_c0,1,MPI_DOUBLE_PRECISION,& 
                         MPI_SUM, row_Comm,ierr)
       call MPI_ALLREDUCE( sum(grad_rho0(:,j)), scalar_grad_rho0,1,MPI_DOUBLE_PRECISION,& 
                         MPI_SUM, row_Comm,ierr)
       call MPI_ALLREDUCE( sum(K_windx(:,j)), scalar_grad_windx,1,MPI_DOUBLE_PRECISION,&
                         MPI_SUM, row_Comm,ierr)
-      ! init
+      ! Initialize the flattened gradient.
       flat_grad(j) = ZERO
       flat_grad(NY_LOCAL+j) = ZERO
-      ! load information in gradient vector
+      ! Store the gradient components in the flattened gradient vector
       flat_grad(j) = scale_model(1) * scalar_grad_rho0
       flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_c0
       flat_grad(2*NY_LOCAL + j)= scale_model(3) * scalar_grad_windx
     enddo
 
-    ! Interpolation
+    ! Interpolate the gradient at the source location
     if (j_rank == JSOURCE / NY_LOCAL) then
       flat_grad(jsource) = (flat_grad(jsource-1) + flat_grad(jsource+1)) *0.5
       flat_grad(NY_LOCAL + jsource) = (flat_grad(NY_LOCAL+ jsource-1) + flat_grad(NY_LOCAL+jsource+1)) * 0.5
@@ -159,30 +185,30 @@ integer :: j
     endif
     
   elseif (parametrisation == 2) then
-    ! density, wind, pressure
+    ! Density, pressure, horizontal wind
     do j=1,NY_LOCAL
-      ! gather information of different mpi processus 
+      ! Sum contributions from all MPI processes
       call MPI_ALLREDUCE( sum(K_rho0(:,j)), scalar_grad_rho0,1,MPI_DOUBLE_PRECISION,& 
                         MPI_SUM, row_Comm,ierr)
       call MPI_ALLREDUCE( sum(K_p0(:,j)), scalar_grad_p0,1,MPI_DOUBLE_PRECISION,& 
                         MPI_SUM, row_Comm,ierr)
       call MPI_ALLREDUCE( sum(K_windx(:,j)), scalar_grad_windx,1,MPI_DOUBLE_PRECISION,&
                         MPI_SUM, row_Comm,ierr)
-      ! init
+      ! Initialize
       flat_grad(j) = ZERO
       flat_grad(NY_LOCAL+j) = ZERO
-      ! load information in gradient vector
+      ! Store the gradient components in the flattened gradient vector
       flat_grad(j) = scale_model(1) * scalar_grad_rho0
       flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_p0
       flat_grad(2*NY_LOCAL + j) = scale_model(3) * scalar_grad_windx
     enddo
     
   elseif (parametrisation == 3) then
-   ! log density, wind, log velocity
-    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+   ! Log-density, log-wave speed, horizontal wind
+    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL) &
                      * p0_prior(1:NX_LOCAL,1:NY_LOCAL)/ rho0_prior(1:NX_LOCAL,1:NY_LOCAL))
     grad_lnc0(:,:) = 2 * c0_prior(1:NX_LOCAL,1:NY_LOCAL)**2 * rho0_prior(1:NX_LOCAL,1:NY_LOCAL) &
-                      / gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+                      / gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL) &
                        * K_p0(1:NX_LOCAL,1:NY_LOCAL)
     grad_lnrho0(:,:) =  p0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL) &
                        + rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL) 
@@ -190,6 +216,7 @@ integer :: j
     call MPI_BARRIER(MPI_COMM_WORLD, code)
   
     do j=1,NY_LOCAL
+      ! Sum contributions from all MPI processes
       call MPI_ALLREDUCE( sum(grad_lnrho0(:,j)), scalar_grad_lnrho0,1,MPI_DOUBLE_PRECISION,& 
                         MPI_SUM, row_Comm,ierr)
       call MPI_ALLREDUCE( sum(grad_lnc0(:,j)), scalar_grad_lnc0,1,MPI_DOUBLE_PRECISION,& 
@@ -203,7 +230,7 @@ integer :: j
     enddo
   
 
-   ! Interpolation
+   ! Interpolate the gradient at the source location
    if (j_rank == JSOURCE / NY_LOCAL) then
      flat_grad(jsource) = (flat_grad(jsource-1) + flat_grad(jsource+1)) *0.5 
      flat_grad(NY_LOCAL + jsource) = (flat_grad(NY_LOCAL+ jsource-1) + flat_grad(NY_LOCAL+jsource+1)) * 0.5
@@ -214,12 +241,12 @@ integer :: j
 
     
   elseif (parametrisation == 35) then
-   print *, "chosen param is ", parametrisation
-   ! log density, wind, log velocity
-    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+   print *, "Selected parameterization: ", parametrisation
+   ! Log-density, wave speed, horizontal wind
+    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL) &
                      * p0_prior(1:NX_LOCAL,1:NY_LOCAL)/ rho0_prior(1:NX_LOCAL,1:NY_LOCAL))
     grad_c0(:,:) = 2 * c0_prior(1:NX_LOCAL,1:NY_LOCAL) * rho0_prior(1:NX_LOCAL,1:NY_LOCAL) &
-                      / gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+                      / gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL) &
                        * K_p0(1:NX_LOCAL,1:NY_LOCAL)
     grad_lnrho0(:,:) =  p0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL) &
                        + rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL) 
@@ -240,7 +267,7 @@ integer :: j
     enddo
   
 
-   ! Interpolation
+   ! Interpolate the gradient at the source location
    if (j_rank == JSOURCE / NY_LOCAL) then
      flat_grad(jsource) = (flat_grad(jsource-1) + flat_grad(jsource+1)) *0.5 
      flat_grad(NY_LOCAL + jsource) = (flat_grad(NY_LOCAL+ jsource-1) + flat_grad(NY_LOCAL+jsource+1)) * 0.5
@@ -251,12 +278,12 @@ integer :: j
 
 
   elseif (parametrisation == 36) then
-   print *, "chosen param is ", parametrisation
-   ! log density, wind, log velocity
-    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+   print *, "Selected parameterization: ", parametrisation
+   ! Log-normalised-density, log-wave speed, horizontal wind
+    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL) &
                      * p0_prior(1:NX_LOCAL,1:NY_LOCAL)/ rho0_prior(1:NX_LOCAL,1:NY_LOCAL))
     grad_c0(:,:) = 2 * c0_prior(1:NX_LOCAL,1:NY_LOCAL) * rho0_prior(1:NX_LOCAL,1:NY_LOCAL) &
-                      / gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+                      / gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL) &
                        * K_p0(1:NX_LOCAL,1:NY_LOCAL)
     grad_lnrho0(:,:) =  p0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL) &
                        + rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL) 
@@ -278,65 +305,65 @@ integer :: j
     enddo
   
 
-! Interpolation
-if (j_rank == JSOURCE / NY_LOCAL) then
-  flat_grad(jsource) = (flat_grad(jsource-1) + flat_grad(jsource+1)) *0.5 
-  flat_grad(NY_LOCAL + jsource) = (flat_grad(NY_LOCAL+ jsource-1) + flat_grad(NY_LOCAL+jsource+1)) * 0.5
-  flat_grad(2*NY_LOCAL+jsource) = (flat_grad(2*NY_LOCAL + jsource-1) + flat_grad(2*NY_LOCAL + jsource+1)) *0.5
-endif
+    ! Interpolate the gradient at the source location
+    if (j_rank == JSOURCE / NY_LOCAL) then
+      flat_grad(jsource) = (flat_grad(jsource-1) + flat_grad(jsource+1)) *0.5 
+      flat_grad(NY_LOCAL + jsource) = (flat_grad(NY_LOCAL+ jsource-1) + flat_grad(NY_LOCAL+jsource+1)) * 0.5
+      flat_grad(2*NY_LOCAL+jsource) = (flat_grad(2*NY_LOCAL + jsource-1) + flat_grad(2*NY_LOCAL + jsource+1)) *0.5
+   endif
 
-  call MPI_BARRIER(MPI_COMM_WORLD, code)
+   call MPI_BARRIER(MPI_COMM_WORLD, code)
 
 
   elseif (parametrisation == 4) then
-    ! log density, wind, log pressure
+    ! Log-density, log-pressure, horizontal wind
     
     grad_lnp0(:,:) = p0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL)
     grad_lnrho0(:,:) = rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL)
     
     do j=1,NY_LOCAL
-      ! gather information of different mpi processus 
+      ! Sum contributions from all MPI processes
       call MPI_ALLREDUCE( sum(grad_lnp0(:,j)), scalar_grad_lnp0,1,MPI_DOUBLE_PRECISION,& 
                         MPI_SUM, row_Comm,ierr)
       call MPI_ALLREDUCE( sum(grad_lnrho0(:,j)), scalar_grad_lnrho0,1,MPI_DOUBLE_PRECISION,& 
                         MPI_SUM, row_Comm,ierr)
       call MPI_ALLREDUCE( sum(K_windx(:,j)), scalar_grad_windx,1,MPI_DOUBLE_PRECISION,&
                         MPI_SUM, row_Comm,ierr)
-      ! init
+      ! Initialize
       flat_grad(j) = ZERO
       flat_grad(NY_LOCAL+j) = ZERO
-      ! load information in gradient vector
+      ! Store the gradient components in the flattened gradient vector
       flat_grad(j) = scale_model(1) * scalar_grad_lnrho0
       flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_lnp0
       flat_grad(2*NY_LOCAL + j) = scale_model(3) * scalar_grad_windx
     enddo
     
   elseif (parametrisation == 5) then
-    ! log celerity, wind, log pressure
-    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+    ! Log-wave speed, log-pressure, horizontal wind
+    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt(gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL) &
                           * p0_prior(1:NX_LOCAL,1:NY_LOCAL)/ rho0_prior(1:NX_LOCAL,1:NY_LOCAL))
     grad_lnc0(:,:) = - 2 * rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL)
     grad_lnp0(:,:) = p0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_p0(1:NX_LOCAL,1:NY_LOCAL) &
                        + rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * K_rho0(1:NX_LOCAL,1:NY_LOCAL) 
     
     do j=1,NY_LOCAL
-      ! log celerity, wind, log pressure
+      ! Log-wave speed, log-pressure, horizontal wind
       call MPI_ALLREDUCE( sum(grad_lnp0(:,j)), scalar_grad_lnp0,1,MPI_DOUBLE_PRECISION,& 
                         MPI_SUM, row_Comm,ierr)
       call MPI_ALLREDUCE( sum(grad_lnc0(:,j)), scalar_grad_lnc0,1,MPI_DOUBLE_PRECISION,& 
                         MPI_SUM, row_Comm,ierr)
       call MPI_ALLREDUCE( sum(K_windx(:,j)), scalar_grad_windx,1,MPI_DOUBLE_PRECISION,&
                         MPI_SUM, row_Comm,ierr)
-      ! init
+      ! Initialize
       flat_grad(j) = ZERO
       flat_grad(NY_LOCAL+j) = ZERO
-      ! load information in gradient vector
+      ! Store the gradient components in the flattened gradient vector
       flat_grad(j) = scale_model(1) * scalar_grad_lnc0
       flat_grad(NY_LOCAL + j) = scale_model(2) * scalar_grad_lnp0
       flat_grad(2*NY_LOCAL + j) = scale_model(3) * scalar_grad_windx
     enddo 
   else
-    print *, "ERROR: parametrisation unknown"
+    print *, "ERROR: Unknown parameterization"
     stop  
   endif
   
@@ -345,7 +372,21 @@ endsubroutine kernelparam2inversionparam
 
 
 subroutine flatmodel2priormodel(flat_model)
-
+!-----------------------------------------------------------------------
+! Convert the flattened inversion vector into the physical model.
+!
+! The flattened vector contains one vertical profile per parameter:
+!
+!   [ parameter_1(y),
+!     parameter_2(y),
+!     horizontal_wind(y) ]
+!
+! The meaning of each parameter depends on the selected
+! inversion parameterization.
+!
+! The profiles are expanded over the computational domain and ghost
+! cells are updated through MPI communications.
+!-----------------------------------------------------------------------
 use parameters
 implicit none
 double precision, dimension(1:Nflat) :: flat_model
@@ -353,7 +394,7 @@ double precision, dimension(1:NY_LOCAL) :: flat_rho0, flat_c0, flat_p0,flat_wind
 integer :: j
 
   if (parametrisation == 1) then
-   ! density, wind, velocity
+   ! Density, wave speed, horizontal wind
    flat_rho0 = scale_model(1)  * flat_model(:NY_LOCAL)
    flat_c0 = scale_model(2)  * flat_model(NY_LOCAL+1:2*NY_LOCAL)
    flat_windx = scale_model(3) * flat_model(1+2*NY_LOCAL:Nflat)
@@ -365,10 +406,10 @@ integer :: j
    enddo
    p0_prior(1:NX_LOCAL,1:NY_LOCAL) = rho0_prior(1:NX_LOCAL,1:NY_LOCAL) &
                      * c0_prior(1:NX_LOCAL,1:NY_LOCAL)**2&
-                      / gamma_chimie(1:NX_LOCAL,1:NY_LOCAL)
+                      / gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL)
    
   else if (parametrisation == 2) then
-   ! density, wind, pressure
+   ! Density, pressure, horizontal wind
    flat_rho0 = scale_model(1)  * flat_model(:NY_LOCAL)
    flat_p0 = scale_model(2)  * flat_model(NY_LOCAL+1:2*NY_LOCAL)
    flat_windx = scale_model(3) * flat_model(1+2*NY_LOCAL:)
@@ -379,11 +420,11 @@ integer :: j
       windx_prior(:,j) = flat_windx(j)
    enddo
    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt( p0_prior(1:NX_LOCAL,1:NY_LOCAL) &
-                          * gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+                          * gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL) &
                              /rho0_prior(1:NX_LOCAL,1:NY_LOCAL))
    
   else if (parametrisation == 35) then
-   ! log density, wind, log velocity
+   ! Log-density, wave speed, horizontal wind
    flat_rho0(1:NY_LOCAL) = exp(scale_model(1)  * flat_model(1:NY_LOCAL))
    flat_c0(1:NY_LOCAL) = scale_model(2)  * flat_model(NY_LOCAL+1:2*NY_LOCAL)
    flat_windx(1:NY_LOCAL) = scale_model(3) * flat_model(1+2*NY_LOCAL:Nflat)
@@ -395,11 +436,11 @@ integer :: j
    enddo
    p0_prior(1:NX_LOCAL,1:NY_LOCAL) = rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * &
                                    c0_prior(1:NX_LOCAL,1:NY_LOCAL)**2 &
-                                   / gamma_chimie(1:NX_LOCAL,1:NY_LOCAL)
+                                   / gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL)
   
 
   else if (parametrisation == 36) then
-   ! log density, wind, log velocity
+   ! Log-normalised-density, log-wave speed, horizontal wind
    flat_rho0(1:NY_LOCAL) = density_prior * exp(scale_model(1)  * flat_model(1:NY_LOCAL))
    flat_c0(1:NY_LOCAL) = scale_model(2)  * flat_model(NY_LOCAL+1:2*NY_LOCAL)
    flat_windx(1:NY_LOCAL) = scale_model(3) * flat_model(1+2*NY_LOCAL:Nflat)
@@ -411,11 +452,11 @@ integer :: j
    enddo
    p0_prior(1:NX_LOCAL,1:NY_LOCAL) = rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * &
                                    c0_prior(1:NX_LOCAL,1:NY_LOCAL)**2 &
-                                   / gamma_chimie(1:NX_LOCAL,1:NY_LOCAL)
+                                   / gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL)
 
 
   else if (parametrisation == 3) then
-   ! log density, wind, log velocity
+   ! Log-density, log-wave speed, horizontal wind
    flat_rho0(1:NY_LOCAL) = exp(scale_model(1)  * flat_model(1:NY_LOCAL))
    flat_c0(1:NY_LOCAL) = exp(scale_model(2)  * flat_model(NY_LOCAL+1:2*NY_LOCAL))
    flat_windx(1:NY_LOCAL) = scale_model(3) * flat_model(1+2*NY_LOCAL:Nflat)
@@ -427,10 +468,10 @@ integer :: j
    enddo
    p0_prior(1:NX_LOCAL,1:NY_LOCAL) = rho0_prior(1:NX_LOCAL,1:NY_LOCAL) * &
                                    c0_prior(1:NX_LOCAL,1:NY_LOCAL)**2 &
-                                   / gamma_chimie(1:NX_LOCAL,1:NY_LOCAL)
+                                   / gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL)
 
   else if (parametrisation == 4) then
-   ! log density, wind, log pressure
+   ! Log-density, log-pressure, horizontal wind
   
    flat_rho0 = exp(scale_model(1)  * flat_model(1:NY_LOCAL))
    flat_p0 = exp(scale_model(2)  * anint(1e16*flat_model(NY_LOCAL+1:2*NY_LOCAL))/1e16)
@@ -442,12 +483,12 @@ integer :: j
       windx_prior(:,j) = flat_windx(j)
    enddo
    c0_prior(1:NX_LOCAL,1:NY_LOCAL) = sqrt( p0_prior(1:NX_LOCAL,1:NY_LOCAL) &
-                             * gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+                             * gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL) &
                              /rho0_prior(1:NX_LOCAL,1:NY_LOCAL))
 
  
   elseif (parametrisation == 5) then
-  ! log celerity, log pressure, wind
+  ! Log-wave speed, log-pressure, horizontal wind
   
    flat_c0 = exp(scale_model(1)  * flat_model(1:NY_LOCAL))
    flat_p0 = exp(scale_model(2)  * flat_model(NY_LOCAL+1:2*NY_LOCAL))
@@ -459,11 +500,11 @@ integer :: j
       windx_prior(:,j) = flat_windx(j)
    enddo
    rho0_prior(1:NX_LOCAL,1:NY_LOCAL) =  p0_prior(1:NX_LOCAL,1:NY_LOCAL) &
-                             * gamma_chimie(1:NX_LOCAL,1:NY_LOCAL) &
+                             * gamma_chemestry(1:NX_LOCAL,1:NY_LOCAL) &
                              /c0_prior(1:NX_LOCAL,1:NY_LOCAL)**2
                              
   else
-    print *, "ERROR: parametrisation unknown"
+    print *, "ERROR: Unknown parameterization"
     stop 
     
   endif
@@ -545,60 +586,68 @@ endsubroutine flatmodel2priormodel
 
 
 subroutine priormodel2flatmodel(flat_model)
-
-use parameters, only : NX_LOCAL, NY_LOCAL, Nflat,density_prior, &
+!-----------------------------------------------------------------------
+! Convert the current physical model into the flattened inversion vector.
+! The inversion vector contains one-dimensional vertical profiles:
+!
+!   flat_model =
+!     [ rho(y),
+!       c(y),
+!       wind_x(y) ]
+!
+! depending on the selected parameterization.
+!-----------------------------------------------------------------------
+use parameters, only : NY_LOCAL, Nflat,density_prior, &
                        scale_model, rho0_prior, c0_prior, p0_prior, windx_prior, parametrisation
 implicit none
 double precision, dimension(1:Nflat):: flat_model
  
   if (parametrisation == 1) then
-  ! density, wind, velocity
+  ! Density, wave speed, horizontal wind
   flat_model(1:NY_LOCAL) = rho0_prior(25,1:NY_LOCAL) / scale_model(1)
   flat_model(NY_LOCAL+1:2*NY_LOCAL) = c0_prior(25,1:NY_LOCAL)/ scale_model(2)
   flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(25,1:NY_LOCAL)/ scale_model(3)
     
   elseif (parametrisation == 2) then
-  ! density, wind, pressure
+  ! Density, pressure, horizontal wind
   flat_model(1:NY_LOCAL) = rho0_prior(25,1:NY_LOCAL) / scale_model(1)
   flat_model(NY_LOCAL+1:2*NY_LOCAL) = p0_prior(25,1:NY_LOCAL)/ scale_model(2)
   flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(25,1:NY_LOCAL)/ scale_model(3)
   
   elseif (parametrisation == 3) then
-  ! log density, wind, log velocity
+  ! Log-density, log-wave speed, horizontal wind
   flat_model(1:NY_LOCAL) = log(rho0_prior(25,1:NY_LOCAL)) / scale_model(1)
   flat_model(NY_LOCAL+1:2*NY_LOCAL) = log(c0_prior(25,1:NY_LOCAL))/ scale_model(2)
   flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(25,1:NY_LOCAL)/ scale_model(3)
   
   elseif (parametrisation == 35) then
-  ! log density, wind, log velocity
+  ! Log-density, wave speed, horizontal wind
   flat_model(1:NY_LOCAL) = log(rho0_prior(25,1:NY_LOCAL)) / scale_model(1)
   flat_model(NY_LOCAL+1:2*NY_LOCAL) = c0_prior(25,1:NY_LOCAL)/ scale_model(2)
   flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(25,1:NY_LOCAL)/ scale_model(3)
   
  elseif (parametrisation == 36) then
-  ! log density, wind, log velocity
+  ! Log-normalised-density, log-wave speed, horizontal wind
   flat_model(1:NY_LOCAL) = log(rho0_prior(25,1:NY_LOCAL)/density_prior) / scale_model(1)
   flat_model(NY_LOCAL+1:2*NY_LOCAL) = c0_prior(25,1:NY_LOCAL)/ scale_model(2)
   flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(25,1:NY_LOCAL)/ scale_model(3)
 
   elseif (parametrisation == 4) then 
-  ! log density, wind, log pressure
+  ! Log-density, log-pressure, horizontal wind
   flat_model(1:NY_LOCAL) = log(rho0_prior(25,1:NY_LOCAL)) / scale_model(1)
   flat_model(NY_LOCAL+1:2*NY_LOCAL) = log(p0_prior(25,1:NY_LOCAL)) / scale_model(2)
   flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(25,1:NY_LOCAL)/ scale_model(3)
-  !flat_model(NY_LOCAL+1:2*NY_LOCAL) = log(anint(1e16*p0_prior(10,1:NY_LOCAL))/1e16) / scale_model(2)
-
  
   
   elseif (parametrisation == 5) then
-  ! log celerity, wind, log pressure
+  ! Log-wave speed, log pressure, horizontal wind
   flat_model(1:NY_LOCAL) = log(c0_prior(25,1:NY_LOCAL)) / scale_model(1)
   flat_model(NY_LOCAL+1:2*NY_LOCAL) = log(p0_prior(25,1:NY_LOCAL))/ scale_model(2)
   flat_model(2*NY_LOCAL+1:Nflat)= windx_prior(25,1:NY_LOCAL)/ scale_model(3)
   
 
   else
-    print *, "ERROR: parametrisation unknown"
+    print *, "ERROR: Unknown parameterization"
     stop 
     
   endif

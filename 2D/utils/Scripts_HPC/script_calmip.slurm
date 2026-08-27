@@ -1,12 +1,11 @@
 #!/bin/bash
 
-
-#SBATCH -J script_test_roland
+#SBATCH -J crosscorr_kernel
 #SBATCH -N 10
-#SBATCH -n 100
-#SBATCH --ntasks-per-node=10
+#SBATCH -n 360
+#SBATCH --ntasks-per-node=36
 #SBATCH --ntasks-per-core=1
-#SBATCH --time=1:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --mail-user=solene.gerier@isae-supaero.fr
 #SBATCH --mail-type=FAIL,END
 #SBATCH --job-name=test
@@ -16,6 +15,13 @@
 export OMP_NUM_THREADS=1
 dirname=${SLURM_JOBID}
 
-mpirun -np 100 xinfrasound  > output_${SLURM_JOBID}.log
+SIMUFILE=$1
+
+if [ -z "$SIMUFILE" ]; then
+    echo "Erreur : aucun fichier de simulation fourni"
+    exit 1
+fi
+
+mpirun -np 360  xinfrasound $SIMUFILE > output_${SLURM_JOBID}.log
 
 ~      

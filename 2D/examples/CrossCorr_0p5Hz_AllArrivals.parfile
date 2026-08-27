@@ -1,0 +1,149 @@
+# ============================================================
+# Simulation Parameter File
+# Format: key = value   (# starts a comment)
+# ============================================================
+
+# --------------- Method ---------------
+# 1: forward, 2: kernel, 3: inversion
+method = 2
+# If method == 2
+# Kernel computation: True=by small perturbations, False=by adjoint
+validation = .false.
+# Desired kernel
+which_kernel = 1
+
+# --------------- MPI decomposition ---------------
+NPROC_X = 20
+NPROC_Y = 18
+
+# --------------- Grid ---------------
+NX     = 3740          # should be a multiple of NPROC_X
+NY     = 2250          # should be a multiple of NPROC_Y
+DELTAX = 20.0        # DELTAX should satisfy the dispersion criterion (at least 10 points per wavelength)
+DELTAY = 20.0        # DELTAY should satisfy the dispersion criterion (at least 10 points per wavelength)
+
+# --------------- Time stepping ---------------
+# CFL O(2,4): cp * DELTAT / DELTAX < 0.606 (stable), ~0.30 (stable and accurate)
+NSTEP  = 44000
+DELTAT = 0.005
+
+# --------------- PML ---------------
+USE_PML_XMIN = .true.
+USE_PML_XMAX = .true.
+USE_PML_YMIN = .false. # if YMIN is false, the ymin boundary is reflective
+USE_PML_YMAX = .true.
+
+# --------------- Source ---------------
+f0 = 0.5
+# source_type: 1=plane wave, 2=point source, 3=point source + SPREAD_SSF
+type_source = 2
+# Wavefront (if type_source == 1): 1=x direction, 2=y direction
+wavefront = 2
+xsource   = 20000.0
+ysource   = 100.0
+# SSF_Sigma ~ 1 wavelength (if type_source == 3)
+SSF_Sigma = 500.0
+
+# --------------- Observations ---------------
+# Type of observation for the kernel:
+# 0: full waveform, 1: arrival time, 2: TODO, 3: no observation, arbitrary timeshift
+observation = 1
+# 0: simulated, 1: read from file, 2: time shift is traveltime (if observation=2), 3: arbitrary timeshift=1 (if observation=2)
+observation_from_file = 3
+path_obs_file = ./Data/real_pressure_file_obs_ # if observation_from_file=1
+
+# Time window used to compute the adjoint source (if observation == 0)
+window_waveform = 1
+
+# --------------- Receivers ---------------
+# Number of receiver sets
+NREC_SET = 1
+# Number of receivers per set (NREC_SET values separated by spaces)
+NREC_PER_SET = 1 
+# Set coordinates: x_start  y_start  x_end  y_end
+# One line per set (NREC_SET lines)
+REC_SET_INFO_1 = 60600 100 60600 100
+
+        
+# Receiver cross-correlation window: start_time  duration (NREC lines)
+REC_wr_1 = 120.6 20.09
+
+
+# --------------- Atmospheric model ---------------
+atmospheric_model_file     = .true.
+atmospheric_file_name_true  = ./model.dat
+atmospheric_file_name_prior = ./model.dat
+
+# --------------- Physical parameters — true model ---------------
+# if atmospheric_model_file=False,
+gamma_chemestry_value = 1.4
+cp_unrelaxed_true  = 347.763977
+density_true       = 1.13837624
+windx_value_true   = 10.0
+
+# --------------- Physical parameters — prior model ---------------
+# if atmospheric_model_file=False,
+cp_unrelaxed_prior = 347.763977
+density_prior      = 1.13837624
+windx_value_prior  = 0.0
+
+# --------------- Model perturbations ---------------
+# Number of perturbations (0 = none)
+NPERTURB_MODEL = 0
+# One line per perturbation:
+#   type=1 (rectangle): 1  x_start  y_start  x_end    y_end    fac_rho  fac_c
+#   type=2 (circle):    2  x_center y_center radius   0        fac_rho  fac_c
+# PERTURB_1 = 1  12000.0  2000.0  15000.0  3000.0  1.2  1.1
+
+# --------------- Wind perturbation ---------------
+add_windperturb_profile = .false.
+ymin_wind         = 8000     # m
+ymax_wind         = 28000    # m
+mean_gauss_wind   = 18.0     # km
+sigma2_gauss_wind = 30.0     # km^2
+max_wind_factor   = 10.0     # m/s
+
+# --------------- Display / output ---------------
+IT_DISPLAY              = 2000
+save_normimage_overtime = 0
+save_adjoint_source     = .false.
+
+# --------------- Checkpointing ---------------
+N_GLOB_FRAMES      = 50
+N_LOC_FRAMES = 4
+
+# --------------- Inversion ---------------
+# Parameterization:
+#   1  : rho + c + windx
+#   2  : rho + p + windx
+#   3  : log(rho) + log(c) + windx
+#   35 : log(rho) + c + windx
+#   36 : log(rho/rho_prior) + c + windx
+#   4  : log(rho) + log(c) + windx
+#   5  : log(c) + log(p) + windx
+parametrisation = 36
+# Scaling factors for the three inversion variables (3 values)
+scale_model = 0.10  100.0  100.0
+
+# Gradient method:
+#   1=Fletcher-Reeves, 2=Polak-Ribiere, 3=Perry-Shanno,
+#   4=Hager-Zhang,     5=Dai-Kou,       6=L-BFGS
+type_gradient = 6
+mem_lbfgs     = 5
+
+# Regularization: 0=none, 1=norm(m - m_prior)
+type_regul_term = 0
+regul_weight    = 0.0000010
+
+# Smoothing after model update: 1=mean, 2=Gaussian, 3=median
+type_smoothing = 3
+
+# Optimization loop control
+steepest_nbiter_default = 5
+maxiter_innerloop       = 50
+maxiter_outerloop       = 100
+tol_x                   = 1e-10
+alpha_max               = 10.0
+rate                    = 0.8
+c1                      = 0.001
+c2                      = 0.9
